@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Asset Map</title>
+  <style>
+    :root {
+      --bg: #f6f1e7;
+      --panel: #fffdf8;
+      --panel-soft: #faf6ee;
+      --ink: #172033;
+      --muted: #667086;
+      --line: #d8ded0;
+      --blue: #3b72ff;
+      --blue-soft: #eef4ff;
+      --green: #2fa56f;
+      --green-soft: #edf8f2;
+      --orange: #c87b28;
+      --orange-soft: #fff3e4;
+      --red: #cf3155;
+      --red-soft: #fff0f3;
+      --violet: #7d5cc6;
+      --violet-soft: #f2edff;
+      --gray: #8892a3;
+      --shadow: 0 14px 34px rgba(52, 58, 64, 0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
+      padding: 22px 28px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+      backdrop-filter: blur(8px);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+      font-weight: 600;
+    }
+
+    .meta {
+      min-width: 280px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: right;
+      font-weight: 650;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 320px minmax(620px, 1fr) 360px;
+      min-height: 0;
+    }
+
+    .left-panel,
+    .right-panel {
+      background: rgba(255, 253, 248, 0.92);
+      min-width: 0;
+      overflow: auto;
+    }
+
+    .left-panel {
+      border-right: 1px solid var(--line);
+      padding: 22px 18px;
+    }
+
+    .right-panel {
+      border-left: 1px solid var(--line);
+      padding: 22px 20px;
+    }
+
+    .stage {
+      min-width: 0;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .group {
+      margin-bottom: 18px;
+    }
+
+    .group-title {
+      margin: 0 0 9px;
+      color: #4d5870;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 6px;
+      color: #59647a;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    select,
+    input,
+    button {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    select,
+    input {
+      padding: 0 10px;
+    }
+
+    input::placeholder { color: #a2a9b7; }
+
+    button {
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    button:hover,
+    select:hover,
+    input:hover {
+      border-color: #b8c1b7;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .artifact-links {
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .artifact-links a {
+      color: #2864e6;
+      text-decoration: none;
+      font-weight: 750;
+    }
+
+    .artifact-links a:hover { text-decoration: underline; }
+
+    .graph-card {
+      height: calc(100vh - 145px);
+      min-height: 600px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      background: rgba(255, 253, 248, 0.78);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .graph-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.96);
+    }
+
+    .view-title {
+      min-width: 0;
+      font-size: 15px;
+      font-weight: 850;
+      color: #4d5870;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      background: #fff;
+    }
+
+    .canvas-wrap {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(38, 48, 66, 0.045) 1px, transparent 1px),
+        linear-gradient(rgba(38, 48, 66, 0.045) 1px, transparent 1px);
+      background-color: #fbfaf6;
+      background-size: 32px 32px;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      user-select: none;
+      display: block;
+    }
+
+    svg.dragging { cursor: grabbing; }
+
+    .edge {
+      fill: none;
+      stroke: #8b96a8;
+      stroke-width: 2;
+      marker-end: url(#arrow);
+    }
+
+    .edge.inferred { stroke-dasharray: 7 6; }
+    .edge.case_path { stroke: var(--green); stroke-width: 3; }
+    .edge.boundary-call,
+    .edge.external_call { stroke: var(--orange); }
+    .edge.risk-edge { stroke: var(--red); }
+    .edge.resource-lifecycle { stroke: var(--violet); }
+
+    .edge-label {
+      fill: #687386;
+      font-size: 11px;
+      paint-order: stroke;
+      stroke: #fbfaf6;
+      stroke-width: 4px;
+      letter-spacing: 0;
+    }
+
+    .node rect {
+      width: 170px;
+      height: 62px;
+      rx: 0;
+      ry: 0;
+      fill: var(--blue-soft);
+      stroke: var(--blue);
+      stroke-width: 2;
+    }
+
+    .node.interface rect {
+      fill: var(--orange-soft);
+      stroke: var(--orange);
+    }
+
+    .node.boundary rect {
+      fill: #fff7ed;
+      stroke: var(--orange);
+    }
+
+    .node.resource rect {
+      fill: var(--violet-soft);
+      stroke: var(--violet);
+    }
+
+    .node.runtime rect {
+      fill: var(--green-soft);
+      stroke: var(--green);
+    }
+
+    .node.risk rect {
+      fill: var(--red-soft);
+      stroke: var(--red);
+    }
+
+    .node.state rect {
+      fill: #eef2f8;
+      stroke: var(--gray);
+    }
+
+    .node.selected rect {
+      stroke: var(--red);
+      stroke-width: 3;
+    }
+
+    .node text {
+      pointer-events: none;
+      letter-spacing: 0;
+    }
+
+    .node .title {
+      font-size: 12px;
+      font-weight: 800;
+      fill: var(--ink);
+    }
+
+    .node .sub {
+      font-size: 10px;
+      fill: #607087;
+      font-weight: 650;
+    }
+
+    .detail-title {
+      margin: 0 0 12px;
+      font-size: 20px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .detail-body {
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.55;
+      font-weight: 600;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 8px;
+      margin: 7px 0;
+    }
+
+    .kv b {
+      color: #536079;
+      font-weight: 850;
+    }
+
+    .source-link {
+      color: #2864e6;
+      font-weight: 800;
+      word-break: break-all;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 12px 0 16px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #647084;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .section-line {
+      border: 0;
+      border-top: 1px solid var(--line);
+      margin: 18px 0;
+    }
+
+    .deep-dive {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .deep-dive summary {
+      cursor: pointer;
+      color: var(--ink);
+      font-weight: 850;
+      font-size: 13px;
+    }
+
+    .deep-dive p,
+    .deep-dive pre {
+      color: #48556b;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .deep-dive pre {
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfaf6;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 290px minmax(520px, 1fr);
+      }
+      .right-panel {
+        grid-column: 1 / -1;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        max-height: none;
+      }
+      .graph-card {
+        height: 70vh;
+      }
+    }
+
+    @media (max-width: 760px) {
+      header {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
+      .meta { text-align: left; }
+      .shell {
+        grid-template-columns: 1fr;
+      }
+      .left-panel,
+      .right-panel {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .stage { padding: 14px; }
+      .graph-card {
+        height: 68vh;
+        min-height: 480px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1 id="pageTitle"></h1>
+        <div class="subtitle" id="pageSubtitle"></div>
+      </div>
+      <div class="meta" id="pageMeta"></div>
+    </header>
+
+    <div class="shell">
+      <aside class="left-panel">
+        <div class="group">
+          <p class="group-title" data-i18n="languageGroup"></p>
+          <label for="langSelect" data-i18n="languageLabel"></label>
+          <select id="langSelect">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div class="group">
+          <p class="group-title" data-i18n="viewGroup"></p>
+          <label for="viewSelect" data-i18n="viewLabel"></label>
+          <select id="viewSelect"></select>
+        </div>
+
+        <div class="group">
+          <p class="group-title" data-i18n="filterGroup"></p>
+          <div class="control-stack">
+            <div>
+              <label for="searchInput" data-i18n="searchLabel"></label>
+              <input id="searchInput" type="search">
+            </div>
+            <div>
+              <label for="phaseFilter" data-i18n="phaseLabel"></label>
+              <select id="phaseFilter"></select>
+            </div>
+            <div>
+              <label for="planeFilter" data-i18n="planeLabel"></label>
+              <select id="planeFilter"></select>
+            </div>
+            <div>
+              <label for="resourceFilter" data-i18n="resourceLabel"></label>
+              <select id="resourceFilter"></select>
+            </div>
+            <div>
+              <label for="ownershipFilter" data-i18n="ownershipLabel"></label>
+              <select id="ownershipFilter"></select>
+            </div>
+            <div>
+              <label for="layerFilter" data-i18n="layerLabel"></label>
+              <select id="layerFilter"></select>
+            </div>
+            <div>
+              <label for="confidenceFilter" data-i18n="confidenceLabel"></label>
+              <select id="confidenceFilter"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="group control-grid">
+          <button id="resetFilters"></button>
+          <button id="fitGraph"></button>
+          <button id="zoomOut"></button>
+          <button id="zoomIn"></button>
+        </div>
+
+        <div class="group">
+          <p class="group-title" data-i18n="artifactsGroup"></p>
+          <div class="artifact-links" id="artifactLinks"></div>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <section class="graph-card">
+          <div class="graph-topbar">
+            <div class="view-title" id="viewTitle"></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="canvas-wrap">
+            <svg id="graph" role="img" aria-label="Code asset graph">
+              <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#8b96a8"></path>
+                </marker>
+              </defs>
+              <g id="viewport"></g>
+            </svg>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right-panel">
+        <h2 class="detail-title" id="detailTitle"></h2>
+        <div class="detail-body" id="detailBody"></div>
+        <hr class="section-line">
+        <div id="deepDivePanel"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const MAP_DATA = {
+      defaultLang: "zh",
+      meta: {
+        title: { zh: "代码资产与接口可视化伴读", en: "Code Asset & Interface Companion" },
+        subtitle: {
+          zh: "围绕一个具体 case 生成资产、接口、边界、资源生命周期与风险视图。外部库和系统只作为边界展示。",
+          en: "Map assets, interfaces, boundaries, resource lifecycles, and risks around one concrete case. External systems remain boundary nodes."
+        },
+        branch: "main",
+        commit: "example",
+        generatedAt: "2026-06-25T00:00:00+08:00",
+        caseId: "example-case"
+      },
+      i18n: {
+        zh: {
+          branch: "分支",
+          commit: "提交",
+          generatedAt: "生成时间",
+          caseId: "案例",
+          languageGroup: "语言",
+          languageLabel: "显示语言",
+          viewGroup: "视图",
+          viewLabel: "架构视图",
+          filterGroup: "过滤",
+          searchLabel: "搜索符号或文件",
+          searchPlaceholder: "例如 forward_step, mappings.py, 请求处理器",
+          phaseLabel: "生命周期阶段",
+          planeLabel: "平面",
+          resourceLabel: "资源类型",
+          ownershipLabel: "归属",
+          layerLabel: "层级",
+          confidenceLabel: "置信度",
+          allPhases: "全部阶段",
+          allPlanes: "全部平面",
+          allResources: "全部资源",
+          allOwnership: "全部归属",
+          allLayers: "全部层级",
+          allConfidence: "全部置信度",
+          reset: "重置",
+          fit: "适配图",
+          zoomIn: "放大",
+          zoomOut: "缩小",
+          artifactsGroup: "产物",
+          selectedFallback: "选择一个节点",
+          selectedHelp: "点击图中的资产或接口节点，查看类型、来源、输入输出、契约和风险。",
+          type: "类型",
+          assetType: "资产类型",
+          interfaceType: "接口类型",
+          layer: "层级",
+          phase: "阶段",
+          planes: "平面",
+          resources: "资源类型",
+          ownership: "仓库自有",
+          source: "来源",
+          symbol: "符号",
+          summary: "摘要",
+          inputs: "入边",
+          outputs: "出边",
+          invariants: "不变量",
+          risks: "风险",
+          evidence: "证据",
+          deepDives: "二级说明",
+          legendOwned: "仓库自有",
+          legendInterface: "接口/边界",
+          legendRuntime: "案例路径",
+          legendRisk: "风险"
+        },
+        en: {
+          branch: "Branch",
+          commit: "Commit",
+          generatedAt: "Generated",
+          caseId: "Case",
+          languageGroup: "Language",
+          languageLabel: "Display language",
+          viewGroup: "View",
+          viewLabel: "Architecture view",
+          filterGroup: "Filters",
+          searchLabel: "Search symbol or file",
+          searchPlaceholder: "e.g. forward_step, mappings.py, request handler",
+          phaseLabel: "Lifecycle phase",
+          planeLabel: "Plane",
+          resourceLabel: "Resource type",
+          ownershipLabel: "Ownership",
+          layerLabel: "Layer",
+          confidenceLabel: "Confidence",
+          allPhases: "All phases",
+          allPlanes: "All planes",
+          allResources: "All resources",
+          allOwnership: "All ownership",
+          allLayers: "All layers",
+          allConfidence: "All confidence",
+          reset: "Reset",
+          fit: "Fit",
+          zoomIn: "Zoom in",
+          zoomOut: "Zoom out",
+          artifactsGroup: "Artifacts",
+          selectedFallback: "Select a node",
+          selectedHelp: "Click an asset or interface node to inspect type, source, inputs, outputs, contracts, and risks.",
+          type: "Type",
+          assetType: "Asset type",
+          interfaceType: "Interface type",
+          layer: "Layer",
+          phase: "Phase",
+          planes: "Planes",
+          resources: "Resources",
+          ownership: "Ownership",
+          source: "Source",
+          symbol: "Symbol",
+          summary: "Summary",
+          inputs: "Inputs",
+          outputs: "Outputs",
+          invariants: "Invariants",
+          risks: "Risks",
+          evidence: "Evidence",
+          deepDives: "Deep dives",
+          legendOwned: "Repo-owned",
+          legendInterface: "Interface/boundary",
+          legendRuntime: "Case path",
+          legendRisk: "Risk"
+        }
+      },
+      artifacts: [
+        { label: { zh: "CODEMAP.md / 核心路径", en: "CODEMAP.md / Core path" }, href: "./CODEMAP.md" },
+        { label: { zh: "资产接口 JSON", en: "Asset-interface JSON" }, href: "./asset-interface-map.json" },
+        { label: { zh: "Mermaid 案例图", en: "Mermaid case graph" }, href: "./case-graph.mmd" }
+      ],
+      views: [
+        {
+          id: "asset-inventory",
+          label: { zh: "资产视图", en: "Asset Inventory" },
+          nodes: [
+            {
+              id: "entry-api",
+              label: { zh: "公开入口", en: "Public entry" },
+              symbol: "run_case",
+              kind: "interface",
+              assetType: "function",
+              interfaceType: "public-api",
+              layer: "api",
+              phase: "initialization",
+              planes: ["control"],
+              resourceTypes: ["runtime_state"],
+              ownership: "repo-owned",
+              confidence: "high",
+              x: 80,
+              y: 150,
+              source_refs: ["src/api.py:42"],
+              summary: { zh: "用户或测试用例调用的入口接口。", en: "Entry interface called by a user or test case." },
+              inputs: ["case config"],
+              outputs: ["execution result"],
+              invariants: ["validated arguments"],
+              risks: ["input contract drift"]
+            },
+            {
+              id: "core-service",
+              label: { zh: "核心服务资产", en: "Core service asset" },
+              symbol: "CoreService",
+              kind: "asset",
+              assetType: "class",
+              layer: "core",
+              phase: "core_execution",
+              planes: ["control", "data"],
+              resourceTypes: ["compute", "runtime_state"],
+              ownership: "repo-owned",
+              confidence: "high",
+              x: 350,
+              y: 150,
+              source_refs: ["src/core/service.py:88"],
+              summary: { zh: "协调本层拥有的状态、资源和下游调用。", en: "Coordinates owned state, resources, and downstream calls." },
+              inputs: ["validated request"],
+              outputs: ["domain result"],
+              invariants: ["state is initialized before execution"],
+              risks: ["hidden coupling with config"]
+            },
+            {
+              id: "state-cache",
+              label: { zh: "运行时缓存", en: "Runtime cache" },
+              symbol: "StateCache",
+              kind: "resource",
+              assetType: "cache",
+              layer: "core",
+              phase: "resource_preparation",
+              planes: ["data"],
+              resourceTypes: ["memory", "runtime_state"],
+              ownership: "repo-owned",
+              confidence: "medium",
+              x: 620,
+              y: 80,
+              source_refs: ["src/core/cache.py:31"],
+              summary: { zh: "缓存中间状态并隐藏内存/失效策略。", en: "Caches intermediate state and hides memory/invalidation policy." },
+              inputs: ["cache key"],
+              outputs: ["cached value"],
+              invariants: ["keys include version"],
+              risks: ["stale data"]
+            },
+            {
+              id: "external-db",
+              label: { zh: "外部数据库", en: "External database" },
+              symbol: "Database",
+              kind: "boundary",
+              interfaceType: "database",
+              layer: "storage",
+              phase: "core_execution",
+              planes: ["data"],
+              resourceTypes: ["storage", "network"],
+              ownership: "external",
+              confidence: "high",
+              x: 890,
+              y: 150,
+              source_refs: ["src/adapters/db.py:16"],
+              summary: { zh: "本仓库只拥有适配器，不拥有数据库实现。", en: "The repo owns the adapter, not the database implementation." },
+              inputs: ["query"],
+              outputs: ["rows"],
+              invariants: ["transaction boundary is explicit"],
+              risks: ["partial failure"]
+            },
+            {
+              id: "risk-node",
+              label: { zh: "一致性风险", en: "Consistency risk" },
+              symbol: "retry + write",
+              kind: "risk",
+              layer: "cross_cutting",
+              phase: "core_execution",
+              planes: ["control"],
+              resourceTypes: ["storage"],
+              ownership: "analysis",
+              confidence: "medium",
+              x: 620,
+              y: 260,
+              source_refs: ["src/core/service.py:133"],
+              summary: { zh: "重试和写入组合可能导致重复副作用。", en: "Retry plus write may duplicate side effects." },
+              inputs: ["timeout"],
+              outputs: ["retry"],
+              invariants: ["operation must be idempotent"],
+              risks: ["duplicated side effect"]
+            }
+          ],
+          edges: [
+            { from: "entry-api", to: "core-service", kind: "case_path", label: { zh: "调用", en: "calls" }, inferred: false },
+            { from: "core-service", to: "state-cache", kind: "resource-lifecycle", label: { zh: "读取/写入", en: "reads/writes" }, inferred: false },
+            { from: "core-service", to: "external-db", kind: "boundary-call", label: { zh: "外部调用", en: "external call" }, inferred: false },
+            { from: "core-service", to: "risk-node", kind: "risk-edge", label: { zh: "可能触发", en: "may trigger" }, inferred: true }
+          ]
+        },
+        {
+          id: "interface-surface",
+          label: { zh: "接口视图", en: "Interface Surface" },
+          nodes: [
+            {
+              id: "cli",
+              label: { zh: "CLI 命令", en: "CLI command" },
+              symbol: "tool run",
+              kind: "interface",
+              interfaceType: "cli",
+              layer: "entry",
+              phase: "initialization",
+              planes: ["control"],
+              resourceTypes: ["runtime_state"],
+              ownership: "repo-owned",
+              confidence: "high",
+              x: 80,
+              y: 100,
+              source_refs: ["src/cli.py:12"],
+              summary: { zh: "命令行参数定义用户入口契约。", en: "Command arguments define the user-facing contract." },
+              inputs: ["argv", "env"],
+              outputs: ["exit code", "stdout"],
+              invariants: ["flags are validated"],
+              risks: ["ambiguous defaults"]
+            },
+            {
+              id: "config",
+              label: { zh: "配置契约", en: "Config contract" },
+              symbol: "Config",
+              kind: "interface",
+              interfaceType: "config",
+              layer: "entry",
+              phase: "resource_preparation",
+              planes: ["control"],
+              resourceTypes: ["runtime_state"],
+              ownership: "repo-owned",
+              confidence: "high",
+              x: 350,
+              y: 100,
+              source_refs: ["src/config.py:24"],
+              summary: { zh: "配置决定资源和实现路径。", en: "Configuration selects resources and implementation paths." },
+              inputs: ["YAML"],
+              outputs: ["typed config"],
+              invariants: ["schema version matches code"],
+              risks: ["silent default change"]
+            },
+            {
+              id: "adapter",
+              label: { zh: "外部库适配器", en: "External adapter" },
+              symbol: "DbAdapter",
+              kind: "boundary",
+              interfaceType: "external-library",
+              layer: "adapter",
+              phase: "core_execution",
+              planes: ["data", "control"],
+              resourceTypes: ["network", "storage"],
+              ownership: "repo-owned",
+              confidence: "high",
+              x: 620,
+              y: 100,
+              source_refs: ["src/adapters/db.py:16"],
+              summary: { zh: "本地代码只封装第三方接口契约。", en: "Local code wraps the third-party interface contract." },
+              inputs: ["domain query"],
+              outputs: ["rows"],
+              invariants: ["exceptions are translated"],
+              risks: ["external API drift"]
+            }
+          ],
+          edges: [
+            { from: "cli", to: "config", kind: "calls", label: { zh: "解析", en: "parses" }, inferred: false },
+            { from: "config", to: "adapter", kind: "dispatches", label: { zh: "选择", en: "selects" }, inferred: false }
+          ]
+        }
+      ],
+      deepDives: [
+        {
+          title: { zh: "资产-接口账本", en: "Asset-interface ledger" },
+          summary: { zh: "先盘点资产和接口，再叠加运行时路径。", en: "Inventory assets and interfaces before overlaying runtime paths." },
+          content: {
+            zh: "建议步骤：\n1. 找入口 case。\n2. 列出本仓库拥有的资产。\n3. 列出对外/对内/外部接口。\n4. 标注 source_refs、owner、lifecycle、invariants。\n5. 再绘制 case_path。",
+            en: "Suggested flow:\n1. Pick an entry case.\n2. Inventory repo-owned assets.\n3. Inventory public/internal/external interfaces.\n4. Record source_refs, owner, lifecycle, invariants.\n5. Draw the case_path overlay."
+          }
+        },
+        {
+          title: { zh: "AI infra profile", en: "AI infra profile" },
+          summary: { zh: "当目标是 AI/ML 系统时，额外区分 data/model/control 三平面。", en: "For AI/ML systems, add data/model/control plane overlays." },
+          content: {
+            zh: "data: 样本、请求、tensor、token、KV cache。\nmodel: 权重、梯度、optimizer state、checkpoint。\ncontrol: scheduler、RPC、actor、stream、barrier、retry。",
+            en: "data: samples, requests, tensors, tokens, KV cache.\nmodel: weights, gradients, optimizer state, checkpoints.\ncontrol: scheduler, RPC, actors, streams, barriers, retries."
+          }
+        }
+      ]
+    };
+
+    const state = {
+      lang: MAP_DATA.defaultLang || "zh",
+      viewId: MAP_DATA.views[0].id,
+      scale: 1,
+      x: 40,
+      y: 40,
+      selectedId: null,
+      dragging: false,
+      dragStart: null,
+      filters: {
+        search: "",
+        phase: "",
+        plane: "",
+        resource: "",
+        ownership: "",
+        layer: "",
+        confidence: ""
+      }
+    };
+
+    const els = {
+      pageTitle: document.getElementById("pageTitle"),
+      pageSubtitle: document.getElementById("pageSubtitle"),
+      pageMeta: document.getElementById("pageMeta"),
+      langSelect: document.getElementById("langSelect"),
+      viewSelect: document.getElementById("viewSelect"),
+      searchInput: document.getElementById("searchInput"),
+      phaseFilter: document.getElementById("phaseFilter"),
+      planeFilter: document.getElementById("planeFilter"),
+      resourceFilter: document.getElementById("resourceFilter"),
+      ownershipFilter: document.getElementById("ownershipFilter"),
+      layerFilter: document.getElementById("layerFilter"),
+      confidenceFilter: document.getElementById("confidenceFilter"),
+      resetFilters: document.getElementById("resetFilters"),
+      fitGraph: document.getElementById("fitGraph"),
+      zoomIn: document.getElementById("zoomIn"),
+      zoomOut: document.getElementById("zoomOut"),
+      artifactLinks: document.getElementById("artifactLinks"),
+      viewTitle: document.getElementById("viewTitle"),
+      legend: document.getElementById("legend"),
+      graph: document.getElementById("graph"),
+      viewport: document.getElementById("viewport"),
+      detailTitle: document.getElementById("detailTitle"),
+      detailBody: document.getElementById("detailBody"),
+      deepDivePanel: document.getElementById("deepDivePanel")
+    };
+
+    function tr(key) {
+      return MAP_DATA.i18n[state.lang][key] || MAP_DATA.i18n.en[key] || key;
+    }
+
+    function text(value) {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      return value[state.lang] || value.en || value.zh || "";
+    }
+
+    function activeView() {
+      return MAP_DATA.views.find((view) => view.id === state.viewId) || MAP_DATA.views[0];
+    }
+
+    function init() {
+      els.langSelect.value = state.lang;
+      MAP_DATA.views.forEach((view) => {
+        const option = document.createElement("option");
+        option.value = view.id;
+        option.textContent = text(view.label);
+        els.viewSelect.appendChild(option);
+      });
+      wireEvents();
+      refreshStaticText();
+      refreshFilterOptions();
+      renderArtifacts();
+      renderDeepDives();
+      render();
+      requestAnimationFrame(fitGraph);
+    }
+
+    function refreshStaticText() {
+      document.documentElement.lang = state.lang;
+      els.pageTitle.textContent = text(MAP_DATA.meta.title);
+      els.pageSubtitle.textContent = text(MAP_DATA.meta.subtitle);
+      els.pageMeta.innerHTML = [
+        `${tr("branch")}: ${escapeHtml(MAP_DATA.meta.branch || "")}`,
+        `${tr("commit")}: ${escapeHtml(MAP_DATA.meta.commit || "")}`,
+        `${tr("generatedAt")}: ${escapeHtml(MAP_DATA.meta.generatedAt || "")}`,
+        `${tr("caseId")}: ${escapeHtml(MAP_DATA.meta.caseId || "")}`
+      ].join("<br>");
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        node.textContent = tr(node.dataset.i18n);
+      });
+      els.searchInput.placeholder = tr("searchPlaceholder");
+      els.resetFilters.textContent = tr("reset");
+      els.fitGraph.textContent = tr("fit");
+      els.zoomIn.textContent = tr("zoomIn");
+      els.zoomOut.textContent = tr("zoomOut");
+      Array.from(els.viewSelect.options).forEach((option) => {
+        const view = MAP_DATA.views.find((item) => item.id === option.value);
+        option.textContent = text(view.label);
+      });
+      if (!state.selectedId) showEmptyDetails();
+    }
+
+    function refreshFilterOptions() {
+      const nodes = MAP_DATA.views.flatMap((view) => view.nodes);
+      fillSelect(els.phaseFilter, tr("allPhases"), unique(nodes.map((n) => n.phase)));
+      fillSelect(els.planeFilter, tr("allPlanes"), unique(nodes.flatMap((n) => n.planes || [])));
+      fillSelect(els.resourceFilter, tr("allResources"), unique(nodes.flatMap((n) => n.resourceTypes || [])));
+      fillSelect(els.ownershipFilter, tr("allOwnership"), unique(nodes.map((n) => n.ownership)));
+      fillSelect(els.layerFilter, tr("allLayers"), unique(nodes.map((n) => n.layer)));
+      fillSelect(els.confidenceFilter, tr("allConfidence"), unique(nodes.map((n) => n.confidence)));
+      els.phaseFilter.value = state.filters.phase;
+      els.planeFilter.value = state.filters.plane;
+      els.resourceFilter.value = state.filters.resource;
+      els.ownershipFilter.value = state.filters.ownership;
+      els.layerFilter.value = state.filters.layer;
+      els.confidenceFilter.value = state.filters.confidence;
+    }
+
+    function fillSelect(select, allLabel, values) {
+      select.innerHTML = "";
+      const all = document.createElement("option");
+      all.value = "";
+      all.textContent = allLabel;
+      select.appendChild(all);
+      values.forEach((value) => {
+        if (!value) return;
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function renderArtifacts() {
+      els.artifactLinks.innerHTML = "";
+      MAP_DATA.artifacts.forEach((item) => {
+        const a = document.createElement("a");
+        a.href = item.href;
+        a.textContent = text(item.label);
+        els.artifactLinks.appendChild(a);
+      });
+    }
+
+    function renderDeepDives() {
+      els.deepDivePanel.innerHTML = `<h3 class="group-title">${tr("deepDives")}</h3>`;
+      MAP_DATA.deepDives.forEach((dive, index) => {
+        const details = document.createElement("details");
+        details.className = "deep-dive";
+        details.open = index === 0;
+        details.innerHTML = `<summary>${escapeHtml(text(dive.title))}</summary><p>${escapeHtml(text(dive.summary))}</p><pre>${escapeHtml(text(dive.content))}</pre>`;
+        els.deepDivePanel.appendChild(details);
+      });
+    }
+
+    function render() {
+      const view = activeView();
+      els.viewSelect.value = view.id;
+      els.viewTitle.textContent = text(view.label);
+      renderLegend();
+      els.viewport.innerHTML = "";
+      const nodes = filteredNodes(view);
+      const nodeIds = new Set(nodes.map((node) => node.id));
+      const edges = view.edges.filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to));
+      renderEdges(view, edges);
+      renderNodes(nodes);
+      if (state.selectedId && !nodeIds.has(state.selectedId)) {
+        state.selectedId = null;
+        showEmptyDetails();
+      } else if (state.selectedId) {
+        const selected = nodes.find((node) => node.id === state.selectedId);
+        if (selected) showDetails(selected);
+      }
+      applyTransform();
+    }
+
+    function filteredNodes(view) {
+      const query = state.filters.search.trim().toLowerCase();
+      return view.nodes.filter((node) => {
+        const haystack = [
+          text(node.label),
+          node.symbol,
+          node.kind,
+          node.assetType,
+          node.interfaceType,
+          node.layer,
+          node.phase,
+          node.ownership,
+          node.confidence,
+          ...(node.planes || []),
+          ...(node.resourceTypes || []),
+          ...(node.source_refs || []),
+          text(node.summary)
+        ].join(" ").toLowerCase();
+        if (query && !haystack.includes(query)) return false;
+        if (state.filters.phase && node.phase !== state.filters.phase) return false;
+        if (state.filters.plane && !(node.planes || []).includes(state.filters.plane)) return false;
+        if (state.filters.resource && !(node.resourceTypes || []).includes(state.filters.resource)) return false;
+        if (state.filters.ownership && node.ownership !== state.filters.ownership) return false;
+        if (state.filters.layer && node.layer !== state.filters.layer) return false;
+        if (state.filters.confidence && node.confidence !== state.filters.confidence) return false;
+        return true;
+      });
+    }
+
+    function renderLegend() {
+      const items = [
+        ["legendOwned", "asset", "var(--blue)"],
+        ["legendInterface", "interface", "var(--orange)"],
+        ["legendRuntime", "runtime", "var(--green)"],
+        ["legendRisk", "risk", "var(--red)"]
+      ];
+      els.legend.innerHTML = "";
+      items.forEach(([key, className, color]) => {
+        const item = document.createElement("span");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="dot" style="color:${color}"></span>${escapeHtml(tr(key))}`;
+        els.legend.appendChild(item);
+      });
+    }
+
+    function renderEdges(view, edges) {
+      edges.forEach((edge) => {
+        const from = view.nodes.find((node) => node.id === edge.from);
+        const to = view.nodes.find((node) => node.id === edge.to);
+        if (!from || !to) return;
+        const x1 = from.x + 170;
+        const y1 = from.y + 31;
+        const x2 = to.x;
+        const y2 = to.y + 31;
+        const midX = (x1 + x2) / 2;
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("class", `edge ${edge.kind || ""} ${edge.inferred ? "inferred" : ""}`);
+        path.setAttribute("d", `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+        els.viewport.appendChild(path);
+
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("class", "edge-label");
+        label.setAttribute("x", midX - 28);
+        label.setAttribute("y", ((y1 + y2) / 2) - 7);
+        label.textContent = text(edge.label) || edge.kind || "";
+        els.viewport.appendChild(label);
+      });
+    }
+
+    function renderNodes(nodes) {
+      nodes.forEach((node) => {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", `node ${node.kind || "asset"} ${state.selectedId === node.id ? "selected" : ""}`);
+        g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+        g.addEventListener("click", (event) => {
+          event.stopPropagation();
+          state.selectedId = node.id;
+          showDetails(node);
+          render();
+        });
+
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        g.appendChild(rect);
+        addText(g, "title", 10, 19, truncate(text(node.label), 22));
+        addText(g, "sub", 10, 38, truncate(node.symbol || node.assetType || node.interfaceType || node.kind, 24));
+        addText(g, "sub", 10, 54, truncate(`${node.phase || ""} / ${node.confidence || ""}`, 24));
+        els.viewport.appendChild(g);
+      });
+    }
+
+    function addText(group, className, x, y, value) {
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("class", className);
+      t.setAttribute("x", x);
+      t.setAttribute("y", y);
+      t.textContent = value;
+      group.appendChild(t);
+    }
+
+    function showEmptyDetails() {
+      els.detailTitle.textContent = tr("selectedFallback");
+      els.detailBody.textContent = tr("selectedHelp");
+    }
+
+    function showDetails(node) {
+      els.detailTitle.textContent = text(node.label);
+      const tags = [
+        ...(node.planes || []),
+        ...(node.resourceTypes || []),
+        node.assetType,
+        node.interfaceType,
+        node.confidence
+      ].filter(Boolean);
+      els.detailBody.innerHTML = `
+        <div class="kv"><b>${tr("type")}</b><span>${escapeHtml(node.kind || "")}</span></div>
+        <div class="kv"><b>${tr("assetType")}</b><span>${escapeHtml(node.assetType || "-")}</span></div>
+        <div class="kv"><b>${tr("interfaceType")}</b><span>${escapeHtml(node.interfaceType || "-")}</span></div>
+        <div class="kv"><b>${tr("layer")}</b><span>${escapeHtml(node.layer || "-")}</span></div>
+        <div class="kv"><b>${tr("phase")}</b><span>${escapeHtml(node.phase || "-")}</span></div>
+        <div class="kv"><b>${tr("ownership")}</b><span>${escapeHtml(node.ownership || "-")}</span></div>
+        <div class="kv"><b>${tr("source")}</b><span>${(node.source_refs || []).map((s) => `<span class="source-link">${escapeHtml(s)}</span>`).join("<br>") || "-"}</span></div>
+        <div class="kv"><b>${tr("symbol")}</b><span>${escapeHtml(node.symbol || "-")}</span></div>
+        <p><b>${tr("summary")}</b><br>${escapeHtml(text(node.summary) || "-")}</p>
+        <div class="pill-row">${tags.map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}</div>
+        ${listBlock("inputs", node.inputs)}
+        ${listBlock("outputs", node.outputs)}
+        ${listBlock("invariants", node.invariants)}
+        ${listBlock("risks", node.risks)}
+      `;
+    }
+
+    function listBlock(key, values) {
+      const items = (values || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      return `<p><b>${tr(key)}</b></p><ul>${items || "<li>-</li>"}</ul>`;
+    }
+
+    function wireEvents() {
+      els.langSelect.addEventListener("change", () => {
+        state.lang = els.langSelect.value;
+        refreshStaticText();
+        refreshFilterOptions();
+        renderArtifacts();
+        renderDeepDives();
+        render();
+      });
+      els.viewSelect.addEventListener("change", () => {
+        state.viewId = els.viewSelect.value;
+        state.selectedId = null;
+        showEmptyDetails();
+        render();
+        fitGraph();
+      });
+      els.searchInput.addEventListener("input", () => {
+        state.filters.search = els.searchInput.value;
+        render();
+      });
+      [
+        [els.phaseFilter, "phase"],
+        [els.planeFilter, "plane"],
+        [els.resourceFilter, "resource"],
+        [els.ownershipFilter, "ownership"],
+        [els.layerFilter, "layer"],
+        [els.confidenceFilter, "confidence"]
+      ].forEach(([select, key]) => {
+        select.addEventListener("change", () => {
+          state.filters[key] = select.value;
+          render();
+        });
+      });
+      els.resetFilters.addEventListener("click", () => {
+        state.filters = { search: "", phase: "", plane: "", resource: "", ownership: "", layer: "", confidence: "" };
+        els.searchInput.value = "";
+        refreshFilterOptions();
+        render();
+      });
+      els.fitGraph.addEventListener("click", fitGraph);
+      els.zoomIn.addEventListener("click", () => zoom(1.2));
+      els.zoomOut.addEventListener("click", () => zoom(1 / 1.2));
+
+      els.graph.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        zoom(event.deltaY < 0 ? 1.08 : 1 / 1.08);
+      }, { passive: false });
+      els.graph.addEventListener("pointerdown", (event) => {
+        state.dragging = true;
+        state.dragStart = { x: event.clientX - state.x, y: event.clientY - state.y };
+        els.graph.classList.add("dragging");
+      });
+      els.graph.addEventListener("pointermove", (event) => {
+        if (!state.dragging) return;
+        state.x = event.clientX - state.dragStart.x;
+        state.y = event.clientY - state.dragStart.y;
+        applyTransform();
+      });
+      els.graph.addEventListener("pointerup", stopDrag);
+      els.graph.addEventListener("pointerleave", stopDrag);
+      els.graph.addEventListener("click", () => {
+        state.selectedId = null;
+        showEmptyDetails();
+        render();
+      });
+      window.addEventListener("resize", fitGraph);
+    }
+
+    function stopDrag() {
+      state.dragging = false;
+      els.graph.classList.remove("dragging");
+    }
+
+    function zoom(factor) {
+      state.scale = Math.max(0.22, Math.min(3.8, state.scale * factor));
+      applyTransform();
+    }
+
+    function fitGraph() {
+      const box = els.viewport.getBBox();
+      const bounds = els.graph.getBoundingClientRect();
+      if (!box.width || !box.height || !bounds.width || !bounds.height) return;
+      state.scale = Math.max(0.3, Math.min(1.6, Math.min((bounds.width - 90) / box.width, (bounds.height - 90) / box.height)));
+      state.x = 45 - box.x * state.scale;
+      state.y = 45 - box.y * state.scale;
+      applyTransform();
+    }
+
+    function applyTransform() {
+      els.viewport.setAttribute("transform", `translate(${state.x}, ${state.y}) scale(${state.scale})`);
+    }
+
+    function unique(values) {
+      return Array.from(new Set(values.filter(Boolean))).sort();
+    }
+
+    function truncate(value, max) {
+      const s = String(value || "");
+      return s.length > max ? `${s.slice(0, max - 1)}...` : s;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    init();
+  </script>
+</body>
+</html>
