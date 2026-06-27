@@ -1,0 +1,4 @@
+interface:
+  display_name: "Control Visual Studio"
+  short_description: "Guide Codex when working with Visual Studio through GUI or CLI."
+  default_prompt: "Help me inspect or fix a Visual Studio project."
