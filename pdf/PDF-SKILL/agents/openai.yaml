@@ -1,0 +1,4 @@
+interface:
+  display_name: "PDF"
+  short_description: "PDF creation, editing, extraction, and forms"
+  default_prompt: "Use $pdf to extract tables from a PDF, merge files, or fill a form safely."

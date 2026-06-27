@@ -1,0 +1,14 @@
+# Core PDF operations and bundled scripts
+pypdf>=4.0.0
+pdfplumber>=0.11.0
+pdf2image>=1.17.0
+Pillow>=10.0.0
+
+# PDF creation and table workflows documented by the skill
+reportlab>=4.0.0
+pandas>=2.0.0
+
+# Advanced rendering/OCR examples in references
+pypdfium2>=4.30.0
+pytesseract>=0.3.10
+numpy>=1.24.0
