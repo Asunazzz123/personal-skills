@@ -39,9 +39,12 @@ Start
 | Build/test from source | `scripts/vs_build.ps1`, `msbuild`, `dotnet`, `cmake`, `ctest` | Build active IDE solution/configuration when CLI cannot match VS state | Only if build failure is visible only in IDE UI |
 | Inspect solution/project files | Read `.sln`, project, props, targets, presets, package files | Enumerate loaded projects/references in the active IDE when load state matters | Only for Solution Explorer visual state |
 | Active VS configuration, startup project, commands | Infer from files when reliable | Query or change active solution state, run `dte.ExecuteCommand(...)` | Only for UI-only selectors or blocked commands |
-| Output Window, Error List, Task List | Prefer saved logs and CLI output | Read IDE panes through DTE when the IDE state is the source of truth | Only if DTE cannot read the pane or a custom tool window is involved |
+| Output Window, Error List, Task List | Prefer saved logs and CLI output | Read IDE panes through DTE; enumerate pane names with `output-panes`; clear panes with `clear-output` | Only if DTE cannot read the pane or a custom tool window is involved |
 | Debugger state, breakpoints, stepping | Use logs/tests for deterministic repro | Query mode, list/set/remove breakpoints, start/stop/step through DTE | Only for visual debugger UI, data tips, or expression windows DTE cannot access |
-| Documents and editor state | Edit files directly with normal tools | Open/save documents or inspect active document through DTE | Only for unsaved editor state or prompts |
+| Debugger threads and modules | N/A | List/switch threads with `list-threads`/`set-active-thread`; inspect loaded modules with `list-modules` | Only for visual thread or module windows |
+| Documents and editor state | Edit files directly with normal tools | Open/save documents, read dirty document text with `get-text`, find/replace with `replace-text` | Only for unsaved editor state or prompts |
+| Solution build configurations | Read `.sln` and project files | Query/change active config with `get-active-config`/`set-active-config`; manage startup project with `get-startup-projects`/`set-startup-project` | Only for UI-only selectors |
+| Extension management | `scripts/vs_extensions.ps1` to list, install, uninstall | N/A | Only for installer UI or Marketplace browsing |
 | Modal dialogs, property pages, designers, trust/sign-in/install prompts | Avoid unless represented in files | Try DTE command/state first if non-visual | Computer Use, with confirmation for mutating prompts |
 
 ## Bundled Resources
@@ -49,6 +52,7 @@ Start
 - `scripts/find_vs.ps1`: Locate installed Visual Studio instances, `devenv.exe`, and `MSBuild.exe` with `vswhere` and Setup Configuration API fallback.
 - `scripts/vs_build.ps1`: Run headless MSBuild builds and emit parsed diagnostics.
 - `scripts/vs_dte.ps1`: Connect to running Visual Studio DTE instances and perform common IDE operations.
+- `scripts/vs_extensions.ps1`: List installed extensions, install from `.vsix`, or uninstall by extension ID.
 - `references/envdte-api.md`: Read when using DTE automation or adding a DTE operation.
 - `references/vs-cli-tools.md`: Read when locating tools, choosing `msbuild` vs `devenv` vs `dotnet`, or debugging CLI build parity.
 
@@ -126,6 +130,25 @@ For debugger or runtime problems:
 - Do not bypass security prompts, automate credentials, or accept permission prompts unless the user explicitly approved the exact action.
 - Do not mix direct Windows UI automation scripts with Computer Use in the same turn.
 - Prefer DTE over screen scraping for repeatable IDE operations, but stop and escalate when DTE is blocked by UI or extension-specific behavior.
+
+## Code Editing Policy
+
+Edit source files directly with file tools. Do not use DTE text manipulation for routine code changes. DTE text operations (`get-text`, `replace-text`) are reserved for:
+
+- Files that have unsaved changes in the VS editor where a disk edit would conflict with the editor state.
+- Operations that depend on VS editor state such as the current selection or active document.
+
+When a file is open in VS and has unsaved changes, prefer asking the user to save or discard before editing on disk, rather than switching to DTE text APIs.
+
+## CLI-First Operations
+
+These operations should always use CLI, never DTE:
+
+- `dotnet build`, `dotnet restore`, `dotnet test`, `dotnet add package` for .NET SDK projects.
+- `tasklist`, `taskkill` for process management.
+- `scripts/vs_extensions.ps1` or `VSIXInstaller.exe` for extension installation from a `.vsix` file.
+
+DTE equivalents exist but are slower and require VS to be running. Use DTE only when the task depends on the live IDE state that CLI cannot observe.
 
 ## Response Pattern
 

@@ -118,10 +118,27 @@ For script use:
 
 ### Output Window
 
-Use `DTE.ToolWindows.OutputWindow.OutputWindowPanes` when available. Each pane can expose a `TextDocument`; read it with an edit point:
+`ToolWindows` is defined on the `EnvDTE80.DTE2` interface, not on `EnvDTE._DTE`.
+PowerShell's COM property accessor uses IDispatch late binding, which cannot reach `ToolWindows` — it returns null.
+Use .NET reflection to call the interface property getter directly:
 
 ```powershell
-$pane = $dte.ToolWindows.OutputWindow.OutputWindowPanes.Item("Build")
+# WRONG: $dte.ToolWindows.OutputWindow  (returns null via IDispatch)
+# RIGHT:
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+$ow = $tw.OutputWindow
+foreach ($pane in $ow.OutputWindowPanes) {
+    $pane.Name
+}
+```
+
+Ref: https://github.com/Edge-JB/TwinCAT-XAE-MCP/pull/6
+
+Each pane can expose a `TextDocument`; read it with an edit point:
+
+```powershell
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+$pane = $tw.OutputWindow.OutputWindowPanes.Item("Build")
 $doc = $pane.TextDocument
 $point = $doc.StartPoint.CreateEditPoint()
 $text = $point.GetText($doc.EndPoint)
@@ -129,15 +146,151 @@ $text = $point.GetText($doc.EndPoint)
 
 If a custom pane is not exposed as text, escalate to Computer Use.
 
+#### Enumerating Output Panes
+
+List all available panes by iterating the collection:
+
+```powershell
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+foreach ($pane in $tw.OutputWindow.OutputWindowPanes) {
+    $pane.Name   # e.g. "Build", "Debug", "General"
+    $pane.Guid   # pane identifier
+}
+```
+
+Use `output-panes` action to discover pane names before reading with `output -Pane <name>`.
+
+#### Clearing a Pane
+
+```powershell
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+$pane = $tw.OutputWindow.OutputWindowPanes.Item("Build")
+$pane.Clear()
+```
+
+### Debugger Threads
+
+Use `Debugger.CurrentProcess.Threads` when the debugger is in run or break mode:
+
+```powershell
+$process = $dte.Debugger.CurrentProcess
+foreach ($thread in $process.Threads) {
+    $thread.ID
+    $thread.Name
+    $thread.SuspendCount
+}
+```
+
+Switch the active thread by assigning to `Debugger.CurrentThread`:
+
+```powershell
+$targetThread = $process.Threads.Item(3)
+$dte.Debugger.CurrentThread = $targetThread
+```
+
+Thread listing is unavailable in design mode. The `list-threads` action handles this gracefully.
+
+### Debugger Modules
+
+Use `Debugger.Modules` to enumerate loaded modules while debugging:
+
+```powershell
+foreach ($module in $dte.Debugger.Modules) {
+    $module.Name          # DLL name
+    $module.Path          # full path
+    $module.IsOptimized   # release build?
+    $module.IsUserCode    # user project?
+    $module.Version       # file version
+    $module.LoadOrder     # load sequence
+}
+```
+
+Module listing requires the debugger to be active (run or break mode).
+
+### SolutionConfigurations
+
+Use `SolutionBuild.SolutionConfigurations` to enumerate available build configurations:
+
+```powershell
+foreach ($config in $dte.Solution.SolutionBuild.SolutionConfigurations) {
+    $config.Name         # e.g. "Debug", "Release"
+    $config.PlatformName # e.g. "Any CPU", "x64"
+    foreach ($ctx in $config.SolutionContexts) {
+        $ctx.ProjectName
+        $ctx.PlatformName
+        $ctx.ShouldBuild
+        $ctx.OutputPath
+    }
+}
+```
+
+Activate a configuration:
+
+```powershell
+$config = $dte.Solution.SolutionBuild.SolutionConfigurations.Item("Release")
+$config.Activate()
+```
+
+The `get-active-config` action reads both the active and all available configurations.
+The `set-active-config` action activates a configuration by name and optional platform.
+
+### TextDocument Operations
+
+Use `TextDocument` for text inspection and replacement in the active editor:
+
+```powershell
+$doc = $dte.ActiveDocument.Object("TextDocument")
+$editPoint = $doc.StartPoint.CreateEditPoint()
+$text = $editPoint.GetText($doc.EndPoint)
+```
+
+Pattern-based replacement:
+
+```powershell
+$editPoint = $doc.StartPoint.CreateEditPoint()
+$editPoint.FindPattern("oldText", 0, $doc.EndPoint, $null)
+$editPoint.ReplaceText($editPoint, "newText", 0)
+```
+
+The `get-text` action reads the active document (or opens a file first with `-File`).
+The `replace-text` action performs find/replace with `-Find` and `-Replace` params.
+
+TextDocument operations require the file to be open in the VS editor. For routine code edits, prefer direct file tools (Tier 1). Use DTE text operations only when the document has unsaved editor state that would conflict with a disk edit.
+
 ### Error List
 
-Many Visual Studio versions expose Error List through `DTE.ToolWindows.ErrorList.ErrorItems`. Useful item properties include `Description`, `FileName`, `Line`, `Column`, `Project`, and `ErrorLevel`.
+Access Error List through `ToolWindows.ErrorList.ErrorItems`. Since `ToolWindows` requires reflection (see Output Window section above), and `ErrorItems` may also require reflection on the `EnvDTE80.ErrorList` interface:
+
+```powershell
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+$el = $tw.ErrorList
+# If $el.ErrorItems returns null via late binding, use reflection:
+$items = [EnvDTE80.ErrorList].GetProperty("ErrorItems").GetValue($el)
+foreach ($item in $items) {
+    $item.Description
+    $item.FileName
+    $item.Line
+    $item.ErrorLevel
+}
+```
 
 If Error List is unavailable or stale, prefer Output Window text or a headless MSBuild log.
 
 ### Task List
 
-Use `DTE.ToolWindows.TaskList.TaskItems` when Visual Studio exposes the Task List through EnvDTE. Useful item properties include `Description`, `FileName`, `Line`, `Category`, `SubCategory`, `Priority`, `Checked`, and `Displayed`.
+Access Task List through `ToolWindows.TaskList.TaskItems`. `TaskItems` may require reflection on the `EnvDTE.TaskList` interface:
+
+```powershell
+$tw = [EnvDTE80.DTE2].GetProperty("ToolWindows").GetValue($dte)
+$tl = $tw.TaskList
+# If $tl.TaskItems returns null via late binding, use reflection:
+$items = [EnvDTE.TaskList].GetProperty("TaskItems").GetValue($tl)
+foreach ($item in $items) {
+    $item.Description
+    $item.FileName
+    $item.Line
+}
+```
 
 If Task List content is supplied by an extension and DTE cannot read it, escalate to Computer Use.
 
