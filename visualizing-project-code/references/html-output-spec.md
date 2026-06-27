@@ -1,6 +1,6 @@
 # HTML Output Specification
 
-The source-code explanation must include at least one zoomable HTML artifact. Use `assets/ai-infra-code-map-template.html` as the starting point. The template is intentionally generic even though the filename is kept for compatibility.
+The source-code explanation must include at least one zoomable HTML artifact. Use `assets/project-code-map-template.html` as the structural starting point and replace its sample data with inspected repository evidence.
 
 ## Layout Requirements
 

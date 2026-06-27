@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Asset Visualizer"
+  short_description: "Map code assets, interfaces, and runtime paths"
+  default_prompt: "Use $visualizing-project-code to map this repository into code assets, interfaces, boundaries, resources, risks, and a bilingual zoomable HTML view."

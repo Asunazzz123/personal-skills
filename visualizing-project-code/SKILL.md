@@ -1,5 +1,5 @@
 ---
-name: visualizing-ai-infra-code
+name: visualizing-project-code
 description: Use when analyzing source code repositories for 源码理解, 源码可视化, code asset maps, interface visualization, architecture companion pages, API/boundary diagrams, runtime case overlays, resource lifecycle views, or complex module deep dives across AI infra, compilers, databases, backend systems, SDKs, libraries, and frameworks.
 ---
 
@@ -13,7 +13,7 @@ Use this skill to turn a repository into a zoomable bilingual map of code assets
 
 Before analyzing a repository, read `references/analysis-framework.md`.
 
-Before creating the visual artifact, read `references/html-output-spec.md` and copy `assets/ai-infra-code-map-template.html` as the starting point unless the user asks for another format.
+Before creating the visual artifact, read `references/html-output-spec.md` and use `assets/project-code-map-template.html` as the structural starting point. Replace its sample data with inspected repository evidence.
 
 ## Workflow
 
