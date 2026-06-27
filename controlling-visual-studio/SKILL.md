@@ -75,7 +75,7 @@ Use EnvDTE when the active Visual Studio instance matters and the task can be ex
 2. Confirm Visual Studio is running in the same Windows desktop session.
 3. Use `scripts/vs_dte.ps1 -Action list-instances` to identify running DTE instances.
 4. Select an instance by solution path, process id, or ProgID when more than one instance is running.
-5. Run the smallest DTE operation that answers the request: `status`, `list-projects`, `output`, `error-list`, `task-list`, `debug-state`, `list-breakpoints`, `build`, or `execute-command`.
+5. Run the smallest DTE operation that answers the request: `status`, `list-projects`, `output`, `error-list`, `task-list`, `debug-state`, `list-breakpoints`, `attach-process`, `build`, `list-commands`, or `execute-command`.
 6. For mutating actions such as adding/removing breakpoints, running commands, saving documents, or starting/stopping debugging, require clear user intent.
 7. If DTE is blocked by a modal dialog, custom designer, extension pane, or unavailable COM object, escalate to Tier 3.
 
@@ -112,6 +112,8 @@ For build or compile problems:
 For debugger or runtime problems:
 
 - Use DTE for debugger mode, breakpoints, stepping, call stack, current frame, and expression evaluation when possible.
+- Use `attach-process -TargetPid <pid> -Engine native` for an already-running native process; the script maps `native` to the stable Visual Studio native-engine GUID so localized engine names do not matter.
+- Use `continue` with `-Wait` when the next breakpoint or process exit must be observed synchronously.
 - Use shell/CLI for logs, tests, deterministic repro commands, and source edits.
 - Use Computer Use only for visual debugger affordances that DTE cannot expose.
 - Avoid changing breakpoints, run state, or exception settings unless the user asked for debugging actions.

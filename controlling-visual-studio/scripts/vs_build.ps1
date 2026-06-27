@@ -67,8 +67,25 @@ function Find-VsWhere {
     return $null
 }
 
+function Test-MSBuildHasVcTargets {
+    param([Parameter(Mandatory = $true)][string]$Candidate)
+
+    $binDirectory = Split-Path -Parent $Candidate
+    $currentDirectory = Split-Path -Parent $binDirectory
+    $msbuildRoot = Split-Path -Parent $currentDirectory
+    $vcRoot = Join-Path $msbuildRoot "Microsoft\VC"
+    if (-not (Test-Path -LiteralPath $vcRoot)) {
+        return $false
+    }
+
+    return $null -ne (Get-ChildItem -LiteralPath $vcRoot -Filter "Microsoft.Cpp.Default.props" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+
 function Find-MSBuild {
-    param([switch]$AllowPrerelease)
+    param(
+        [switch]$AllowPrerelease,
+        [switch]$RequireVcTools
+    )
 
     if (-not [string]::IsNullOrWhiteSpace($MSBuildPath)) {
         if (-not (Test-Path -LiteralPath $MSBuildPath)) {
@@ -79,12 +96,16 @@ function Find-MSBuild {
 
     $vswhere = Find-VsWhere
     if ($vswhere) {
-        $args = @("-latest", "-products", "*", "-requires", "Microsoft.Component.MSBuild", "-find", "MSBuild\**\Bin\MSBuild.exe")
+        $args = @("-latest", "-products", "*", "-requires", "Microsoft.Component.MSBuild")
+        if ($RequireVcTools) {
+            $args += "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+        }
+        $args += @("-find", "MSBuild\**\Bin\MSBuild.exe")
         if ($AllowPrerelease) {
             $args += "-prerelease"
         }
 
-        $found = @(& $vswhere @args) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) }
+        $found = @(& $vswhere @args | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) })
         if ($found.Count -gt 0) {
             return (Resolve-Path -LiteralPath ($found | Select-Object -First 1)).Path
         }
@@ -104,28 +125,57 @@ function Find-MSBuild {
     )
 
     foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
+        if ((Test-Path -LiteralPath $candidate) -and (-not $RequireVcTools -or (Test-MSBuildHasVcTargets -Candidate $candidate))) {
             return (Resolve-Path -LiteralPath $candidate).Path
         }
     }
 
     $command = Get-Command "msbuild.exe" -ErrorAction SilentlyContinue
-    if ($command) {
+    if ($command -and (-not $RequireVcTools -or (Test-MSBuildHasVcTargets -Candidate $command.Source))) {
         return $command.Source
     }
 
     throw "MSBuild was not found. Install Visual Studio Build Tools or pass -MSBuildPath."
 }
 
+function Test-ProjectRequiresVcTools {
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+
+    $extension = [IO.Path]::GetExtension($ProjectPath)
+    if ([string]::Equals($extension, ".vcxproj", [StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    if ($extension -in @(".sln", ".slnx")) {
+        try {
+            return [regex]::IsMatch([IO.File]::ReadAllText($ProjectPath), "\.vcxproj(?:\x22|\x27|,|\s)", [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        } catch {
+            return $false
+        }
+    }
+
+    return $false
+}
+
 function Parse-MSBuildDiagnostics {
-    param([Parameter(Mandatory = $true)][string[]]$Lines)
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines = @()
+    )
 
     $diagnostics = New-Object System.Collections.Generic.List[object]
+    $seenLines = @{}
     $filePattern = "^(?<file>.+?)\((?<line>\d+)(,(?<column>\d+))?\)\s*:\s*(?<level>error|warning)\s+(?<code>[A-Za-z]+\d+[A-Za-z0-9]*):\s*(?<message>.*)$"
     $plainPattern = "^\s*(?<level>error|warning)\s+(?<code>[A-Za-z]+\d+[A-Za-z0-9]*):\s*(?<message>.*)$"
 
     foreach ($line in $Lines) {
         $text = [string]$line
+        if ($seenLines.ContainsKey($text)) {
+            continue
+        }
+        $seenLines[$text] = $true
+
         $match = [regex]::Match($text, $filePattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         if ($match.Success) {
             $diagnostics.Add([pscustomobject]@{
@@ -154,11 +204,12 @@ function Parse-MSBuildDiagnostics {
         }
     }
 
-    return @($diagnostics)
+    return $diagnostics.ToArray()
 }
 
 $resolvedPath = (Resolve-Path -LiteralPath $Path).Path
-$msbuild = Find-MSBuild -AllowPrerelease:$Prerelease
+$requiresVcTools = Test-ProjectRequiresVcTools -ProjectPath $resolvedPath
+$msbuild = Find-MSBuild -AllowPrerelease:$Prerelease -RequireVcTools:$requiresVcTools
 
 $targets = New-Object System.Collections.Generic.List[string]
 if ($Restore -and $Target -ne "Restore") {
@@ -203,7 +254,7 @@ $result = [pscustomobject]@{
     tool        = "MSBuild"
     msbuildPath = $msbuild
     path        = $resolvedPath
-    arguments   = @($arguments)
+    arguments   = $arguments.ToArray()
     exitCode    = $exitCode
     succeeded   = ($exitCode -eq 0)
     started     = $started.ToString("o")

@@ -23,6 +23,7 @@ param(
         "start-debugging",
         "stop-debugging",
         "break",
+        "continue",
         "step-into",
         "step-over",
         "step-out",
@@ -32,6 +33,8 @@ param(
         "output",
         "error-list",
         "task-list",
+        "list-commands",
+        "attach-process",
         "execute-command",
         "open-document",
         "save-all"
@@ -52,6 +55,9 @@ param(
 
     [string]$Command,
     [string]$CommandArgs = "",
+    [string]$CommandFilter,
+    [int]$TargetPid,
+    [string]$Engine,
     [string]$Expression,
 
     [switch]$Wait
@@ -160,10 +166,17 @@ function Get-DebugModeName {
 
     switch ([int]$Mode) {
         1 { "design" }
-        2 { "run" }
-        3 { "break" }
+        2 { "break" }
+        3 { "run" }
         default { [string]$Mode }
     }
+}
+
+function Get-CurrentDebugMode {
+    param($Dte)
+
+    $debugger = Get-Value -Object $Dte -Name "Debugger"
+    return Get-DebugModeName -Mode (Get-Value -Object $debugger -Name "CurrentMode")
 }
 
 function Get-RotPid {
@@ -237,7 +250,7 @@ function Get-DteInstances {
         }
     }
 
-    return @($instances | Sort-Object { $_.meta.version } -Descending)
+    return @($instances.ToArray() | Sort-Object { $_.meta.version } -Descending)
 }
 
 function Select-DteInstance {
@@ -275,7 +288,7 @@ function Select-DteInstance {
 
 function Write-Json {
     param([Parameter(Mandatory = $true)]$Value)
-    $Value | ConvertTo-Json -Depth 12
+    ConvertTo-Json -InputObject $Value -Depth 12
 }
 
 function Get-Status {
@@ -314,7 +327,7 @@ function Get-Status {
             startupProjects     = @(Get-Value -Object $build -Name "StartupProjects")
         }
         debugger = [pscustomobject]@{
-            currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode
+            currentMode = Get-CurrentDebugMode -Dte $dte
             lastBreakReason = [string](Get-Value -Object $dte.Debugger -Name "LastBreakReason")
         }
         activeDocument = $activeDocument
@@ -352,7 +365,7 @@ function Get-ProjectList {
         }
     }
 
-    return @($result)
+    return $result.ToArray()
 }
 
 function Get-BreakpointList {
@@ -372,7 +385,7 @@ function Get-BreakpointList {
         }) | Out-Null
     }
 
-    return @($items)
+    return $items.ToArray()
 }
 
 function Get-OutputText {
@@ -413,7 +426,7 @@ function Get-OutputText {
         }) | Out-Null
     }
 
-    return @($panes)
+    return $panes.ToArray()
 }
 
 function Get-ErrorList {
@@ -438,7 +451,7 @@ function Get-ErrorList {
         }) | Out-Null
     }
 
-    return @($items)
+    return $items.ToArray()
 }
 
 function Get-TaskList {
@@ -465,7 +478,7 @@ function Get-TaskList {
         }) | Out-Null
     }
 
-    return @($items)
+    return $items.ToArray()
 }
 
 function Get-CallStack {
@@ -486,7 +499,7 @@ function Get-CallStack {
         throw "Call stack is available only while the debugger has an active current thread."
     }
 
-    return @($frames)
+    return $frames.ToArray()
 }
 
 function Get-Locals {
@@ -506,7 +519,7 @@ function Get-Locals {
         throw "Locals are available only while the debugger is stopped at a stack frame."
     }
 
-    return @($locals)
+    return $locals.ToArray()
 }
 
 if ($Action -eq "list-instances") {
@@ -552,7 +565,7 @@ switch ($Action) {
     "debug-state" {
         Write-Json -Value ([pscustomobject]@{
             instance = $selected.meta
-            currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode
+            currentMode = Get-CurrentDebugMode -Dte $dte
             currentProcess = [string](Get-Value -Object (Get-Value -Object $dte.Debugger -Name "CurrentProcess") -Name "Name")
             currentThread = [string](Get-Value -Object (Get-Value -Object $dte.Debugger -Name "CurrentThread") -Name "Name")
             currentStackFrame = [string](Get-Value -Object (Get-Value -Object $dte.Debugger -Name "CurrentStackFrame") -Name "FunctionName")
@@ -586,28 +599,43 @@ switch ($Action) {
         })
     }
     "start-debugging" {
-        $dte.Solution.SolutionBuild.Debug()
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "start-debugging"; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        $solutionPath = [string](Get-Value -Object $dte.Solution -Name "FullName")
+        $isFolderWorkspace = -not [string]::IsNullOrWhiteSpace($solutionPath) -and (Test-Path -LiteralPath $solutionPath -PathType Container)
+        if ($isFolderWorkspace) {
+            $dte.ExecuteCommand("Debug.Start", "")
+        } else {
+            $dte.Solution.SolutionBuild.Debug()
+        }
+        Write-Json -Value ([pscustomobject]@{
+            instance = $selected.meta
+            action = "start-debugging"
+            mechanism = if ($isFolderWorkspace) { "Debug.Start" } else { "SolutionBuild.Debug" }
+            currentMode = Get-CurrentDebugMode -Dte $dte
+        })
     }
     "stop-debugging" {
         $dte.Debugger.Stop($true)
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "stop-debugging"; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "stop-debugging"; currentMode = Get-CurrentDebugMode -Dte $dte })
     }
     "break" {
         $dte.Debugger.Break($true)
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "break"; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "break"; currentMode = Get-CurrentDebugMode -Dte $dte })
+    }
+    "continue" {
+        $dte.Debugger.Go($Wait.IsPresent)
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "continue"; waited = $Wait.IsPresent; currentMode = Get-CurrentDebugMode -Dte $dte })
     }
     "step-into" {
         $dte.Debugger.StepInto($Wait.IsPresent)
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-into"; waited = $Wait.IsPresent; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-into"; waited = $Wait.IsPresent; currentMode = Get-CurrentDebugMode -Dte $dte })
     }
     "step-over" {
         $dte.Debugger.StepOver($Wait.IsPresent)
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-over"; waited = $Wait.IsPresent; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-over"; waited = $Wait.IsPresent; currentMode = Get-CurrentDebugMode -Dte $dte })
     }
     "step-out" {
         $dte.Debugger.StepOut($Wait.IsPresent)
-        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-out"; waited = $Wait.IsPresent; currentMode = Get-DebugModeName -Mode $dte.Debugger.CurrentMode })
+        Write-Json -Value ([pscustomobject]@{ instance = $selected.meta; action = "step-out"; waited = $Wait.IsPresent; currentMode = Get-CurrentDebugMode -Dte $dte })
     }
     "list-breakpoints" {
         Write-Json -Value ([pscustomobject]@{
@@ -679,6 +707,75 @@ switch ($Action) {
         Write-Json -Value ([pscustomobject]@{
             instance = $selected.meta
             items = @(Get-TaskList -Dte $dte)
+        })
+    }
+    "list-commands" {
+        $commands = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $dte.Commands) {
+            $name = [string](Get-Value -Object $item -Name "Name")
+            if ([string]::IsNullOrWhiteSpace($CommandFilter) -or $name -like "*$CommandFilter*") {
+                $commands.Add([pscustomobject]@{
+                    name = $name
+                    guid = [string](Get-Value -Object $item -Name "Guid")
+                    id = Get-Value -Object $item -Name "ID"
+                }) | Out-Null
+            }
+        }
+        Write-Json -Value ([pscustomobject]@{
+            instance = $selected.meta
+            filter = $CommandFilter
+            commands = $commands.ToArray()
+        })
+    }
+    "attach-process" {
+        if ($TargetPid -le 0) {
+            throw "-TargetPid is required for attach-process."
+        }
+
+        $targetProcess = $null
+        foreach ($candidate in $dte.Debugger.LocalProcesses) {
+            if ([int](Get-Value -Object $candidate -Name "ProcessID") -eq $TargetPid) {
+                $targetProcess = $candidate
+                break
+            }
+        }
+        if (-not $targetProcess) {
+            throw "The target process was not found in DTE.Debugger.LocalProcesses: $TargetPid"
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Engine)) {
+            $targetProcess.Attach()
+        } else {
+            $engineSelector = if ([string]::Equals($Engine, "native", [StringComparison]::OrdinalIgnoreCase)) {
+                "{3B476D35-A401-11D2-AAD4-00C04F990171}"
+            } else {
+                $Engine
+            }
+
+            if (-not ("EnvDTE80.Process2" -as [type])) {
+                $ideDirectory = Split-Path -Parent ([string](Get-Value -Object $dte -Name "FullName"))
+                $publicAssemblies = Join-Path $ideDirectory "PublicAssemblies"
+                Add-Type -Path (Join-Path $publicAssemblies "envdte.dll")
+                Add-Type -Path (Join-Path $publicAssemblies "envdte80.dll")
+            }
+
+            $unknown = [Runtime.InteropServices.Marshal]::GetIUnknownForObject($targetProcess)
+            try {
+                $process2 = [Runtime.InteropServices.Marshal]::GetTypedObjectForIUnknown($unknown, [EnvDTE80.Process2])
+                $attachMethod = [EnvDTE80.Process2].GetMethod("Attach2")
+                [void]$attachMethod.Invoke($process2, @([object]$engineSelector))
+            } finally {
+                [void][Runtime.InteropServices.Marshal]::Release($unknown)
+            }
+        }
+
+        Write-Json -Value ([pscustomobject]@{
+            instance = $selected.meta
+            action = "attach-process"
+            targetProcessId = $TargetPid
+            targetName = [string](Get-Value -Object $targetProcess -Name "Name")
+            engine = if ([string]::IsNullOrWhiteSpace($Engine)) { "automatic" } else { $engineSelector }
+            currentMode = Get-CurrentDebugMode -Dte $dte
         })
     }
     "execute-command" {

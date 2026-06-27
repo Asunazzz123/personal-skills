@@ -36,6 +36,9 @@ Use `scripts/vs_dte.ps1 -Action list-instances` first. Then select an instance b
 .\scripts\vs_dte.ps1 -Action list-instances
 .\scripts\vs_dte.ps1 -Action status -Solution C:\src\App\App.sln
 .\scripts\vs_dte.ps1 -Action output -Pane Build -Tail 200
+.\scripts\vs_dte.ps1 -Action attach-process -TargetPid 1234 -Engine native
+.\scripts\vs_dte.ps1 -Action continue -Wait
+.\scripts\vs_dte.ps1 -Action list-commands -CommandFilter Startup
 ```
 
 PowerShell and Visual Studio must run in the same Windows user desktop session. DTE automation can be blocked by modal dialogs or unavailable if Visual Studio is elevated and the PowerShell host is not elevated.
@@ -92,6 +95,8 @@ Common members:
 - `Debugger.CurrentStackFrame.Locals`: local expressions when stopped.
 - `Debugger.GetExpression(expression, useAutoExpandRules, timeout)`: evaluate in the current frame.
 - `Debugger.Go(wait)`, `Break(wait)`, `Stop(wait)`, `StepInto(wait)`, `StepOver(wait)`, `StepOut(wait)`: control execution.
+- `Debugger.LocalProcesses`: enumerate processes available to the selected Visual Studio instance.
+- `EnvDTE80.Process2.Attach2(engine)`: attach with a specific engine. The bundled script accepts `-Engine native` and maps it to `{3B476D35-A401-11D2-AAD4-00C04F990171}` for locale-independent native attachment.
 
 Only mutate debugger state when the user asked for debugging actions. If the target is running, some reads are unavailable until the debugger is stopped.
 
