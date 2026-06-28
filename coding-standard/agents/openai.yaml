@@ -1,0 +1,7 @@
+interface:
+  display_name: "Coding Standard"
+  short_description: "Global Python implementation and review rules"
+  default_prompt: "Use $coding-standard to implement or review this Python change according to the global conventions."
+
+policy:
+  allow_implicit_invocation: true
