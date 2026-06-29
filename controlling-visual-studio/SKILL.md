@@ -37,7 +37,7 @@ Start
 |---|---|---|---|
 | Locate VS, MSBuild, devenv | `scripts/find_vs.ps1`, `vswhere`, known tool paths | Not needed | Only if installer UI must be inspected |
 | Build/test from source | `scripts/vs_build.ps1`, `msbuild`, `dotnet`, `cmake`, `ctest` | Build active IDE solution/configuration when CLI cannot match VS state | Only if build failure is visible only in IDE UI |
-| Inspect solution/project files | Read `.sln`, project, props, targets, presets, package files | Enumerate loaded projects/references in the active IDE when load state matters | Only for Solution Explorer visual state |
+| Inspect solution/project files | Read `.sln`, project, props, targets, presets, package files; use `scripts/audit_dotnet_project.ps1` for `.csproj`/.NET reference audits | Enumerate loaded projects/references in the active IDE when load state matters | Only for Solution Explorer visual state |
 | Active VS configuration, startup project, commands | Infer from files when reliable | Query or change active solution state, run `dte.ExecuteCommand(...)` | Only for UI-only selectors or blocked commands |
 | Output Window, Error List, Task List | Prefer saved logs and CLI output | Read IDE panes through DTE; enumerate pane names with `output-panes`; clear panes with `clear-output` | Only if DTE cannot read the pane or a custom tool window is involved |
 | Debugger state, breakpoints, stepping | Use logs/tests for deterministic repro | Query mode, list/set/remove breakpoints, start/stop/step through DTE | Only for visual debugger UI, data tips, or expression windows DTE cannot access |
@@ -51,10 +51,11 @@ Start
 
 - `scripts/find_vs.ps1`: Locate installed Visual Studio instances, `devenv.exe`, and `MSBuild.exe` with `vswhere` and Setup Configuration API fallback.
 - `scripts/vs_build.ps1`: Run headless MSBuild builds and emit parsed diagnostics.
+- `scripts/audit_dotnet_project.ps1`: Read-only audit for `.sln`/`.csproj` project style, target frameworks, packages, references, HintPath resolution, platform settings, and conditional property groups.
 - `scripts/vs_dte.ps1`: Connect to running Visual Studio DTE instances and perform common IDE operations.
 - `scripts/vs_extensions.ps1`: List installed extensions, install from `.vsix`, or uninstall by extension ID.
 - `references/envdte-api.md`: Read when using DTE automation or adding a DTE operation.
-- `references/vs-cli-tools.md`: Read when locating tools, choosing `msbuild` vs `devenv` vs `dotnet`, or debugging CLI build parity.
+- `references/vs-cli-tools.md`: Read when locating tools, choosing `msbuild` vs `devenv` vs `dotnet`, auditing `.csproj` files, or debugging CLI build parity.
 
 These PowerShell scripts are intended for Windows hosts with Visual Studio installed. On non-Windows hosts, treat them as reference implementations and use file/CLI inspection available in the current environment.
 
@@ -68,6 +69,8 @@ Use shell/CLI when the request benefits from complete, repeatable output:
 4. Build CMake projects with `cmake -S`, `cmake --build`, `ctest`, and `CMakePresets.json` when present.
 5. Inspect C++ toolchain issues with compiler/linker output, Windows SDK paths, include/library paths, NuGet, and package managers such as `vcpkg`.
 6. Use `rg`/`git grep` and structured file inspection for `.sln`, project files, `.props`, `.targets`, `CMakeLists.txt`, `CMakePresets.json`, and launch/config files.
+
+For .NET/C# projects, treat `.csproj` as the Visual Studio/MSBuild project configuration file, not a domain-specific source file. Before diagnosing missing namespaces, unresolved types, package restore failures, platform mismatch, or Visual Studio/CLI build drift, inspect `.sln`, `.csproj`, `.props`, `.targets`, `Directory.Build.props`, `Directory.Build.targets`, `packages.config`, and `NuGet.Config`; use `scripts/audit_dotnet_project.ps1` for a read-only JSON summary.
 
 When CLI output disagrees with Visual Studio, compare the active VS solution configuration, platform, startup project, CMake preset/configuration, environment, working directory, and property inheritance.
 
@@ -110,8 +113,9 @@ For build or compile problems:
 1. Get the full error text. Prefer Tier 1 logs; use DTE Output/Error List if the issue is IDE-only.
 2. Identify active configuration and platform (`Debug`/`Release`, `x64`/`Win32`, CMake preset, startup target).
 3. Separate code errors from environment/configuration errors: missing include/lib, SDK/toolset, package restore, wrong working directory, stale generated files, linker inputs, runtime DLL path.
-4. Prefer a reproducible CLI command before editing code. If the user forbids shell access, use DTE or Computer Use based on the allowed surface.
-5. After a fix, verify through the same surface where the failure appeared. If the failure was in VS, verify through DTE or VS; if it was CLI/CI, verify by command.
+4. For .NET/C# diagnostics such as `CS0234`, `CS0246`, `MSB3245`, `MSB3270`, `NU110x`, or `NETSDK*`, audit the project file first: target framework, package references, project references, assembly references, HintPath existence, `EmbedInteropTypes`, `SpecificVersion`, `Private`, `PlatformTarget`, `Prefer32Bit`, runtime identifiers, and conditional `PropertyGroup` settings.
+5. Prefer a reproducible CLI command before editing code. If the user forbids shell access, use DTE or Computer Use based on the allowed surface.
+6. After a fix, verify through the same surface where the failure appeared. If the failure was in VS, verify through DTE or VS; if it was CLI/CI, verify by command.
 
 For debugger or runtime problems:
 

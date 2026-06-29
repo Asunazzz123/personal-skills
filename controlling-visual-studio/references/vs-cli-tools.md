@@ -90,6 +90,37 @@ If `dotnet build` succeeds but Visual Studio fails, compare:
 - User-specific `.suo`/launch state.
 - Visual Studio-only targets, workloads, analyzers, and design-time build settings.
 
+## .NET Project File Audit
+
+Use `scripts/audit_dotnet_project.ps1` before changing source when errors point to missing namespaces/types, unresolved references, package restore, target framework mismatch, or platform mismatch:
+
+```powershell
+.\scripts\audit_dotnet_project.ps1 C:\src\App\App.csproj
+.\scripts\audit_dotnet_project.ps1 C:\src\App\App.sln
+```
+
+Treat `.csproj` as the Visual Studio/MSBuild project configuration file for C# and .NET projects, not as a domain-specific code file. The same audit pattern applies to desktop apps, Web APIs, internal tools, experiment or instrument data tools, and mixed managed/native projects.
+
+Check these fields first:
+
+- Project style: SDK-style uses `<Project Sdk="...">`; legacy projects usually rely on imported MSBuild targets.
+- Targeting: `TargetFramework`, `TargetFrameworks`, `TargetFrameworkVersion`, `OutputType`, `UseWindowsForms`, and `UseWPF`.
+- Dependencies: `PackageReference`, `packages.config`, `ProjectReference`, and assembly `Reference` entries.
+- Reference paths: `HintPath` existence, unresolved MSBuild properties, duplicate references, and version conflicts.
+- Interop/copy behavior: `SpecificVersion`, `Private`/Copy Local, and `EmbedInteropTypes`.
+- Platform/runtime: `PlatformTarget`, `Prefer32Bit`, `RuntimeIdentifier`, `RuntimeIdentifiers`, and conditional `PropertyGroup` settings such as `Debug|x86` or `Release|x64`.
+- External inputs: `Directory.Build.props`, `Directory.Build.targets`, `NuGet.Config`, imported `.props`/`.targets`, generated files, and design-time build artifacts.
+
+Diagnostic mapping:
+
+| Error family | First project-file checks |
+|---|---|
+| `CS0234`, `CS0246` | Missing assembly/package/project reference, wrong target framework, stale generated code, or missing using after reference validation |
+| `MSB3245` | Unresolved assembly reference, broken `HintPath`, missing SDK/workload, or conditional reference not active |
+| `MSB3270` | `PlatformTarget`, `Prefer32Bit`, native dependency architecture, or active solution platform mismatch |
+| `NU110x` | Package source, version range, restore state, central package management, or `NuGet.Config` |
+| `NETSDK*` | SDK selection, target framework support, runtime identifier, workload, or `global.json` |
+
 ## devenv
 
 Use `devenv` only when MSBuild cannot reproduce the IDE behavior or a Visual Studio command-line switch is specifically required:
