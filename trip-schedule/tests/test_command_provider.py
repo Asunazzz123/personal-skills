@@ -6,6 +6,17 @@ import pytest
 from providers.command_provider import CommandRunner
 
 
+@pytest.mark.parametrize("command", ["crawler", b"crawler"])
+def test_command_runner_rejects_bare_string_commands(command) -> None:
+    with pytest.raises(ValueError, match="argv"):
+        CommandRunner(command)
+
+
+def test_command_runner_rejects_non_string_argv_items() -> None:
+    with pytest.raises(ValueError, match="argv"):
+        CommandRunner(["crawler", 123])
+
+
 def test_command_runner_never_uses_a_shell(monkeypatch) -> None:
     observed = {}
 
@@ -38,3 +49,38 @@ def test_command_runner_rejects_non_json_stdout(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="valid JSON"):
         CommandRunner(["crawler"]).run({"destination": "杭州"})
+
+
+def test_command_runner_redacts_sensitive_stderr(monkeypatch) -> None:
+    stderr = (
+        "cookie=secret; Authorization: Bearer abc.def; token=hidden; "
+        "api_key=secret-key; password=pw; "
+        '{"key": "json-secret", "authorization": "Bearer xyz.123"}'
+    )
+
+    monkeypatch.setattr(
+        "providers.command_provider.subprocess.run",
+        lambda *args, **kwargs: CompletedProcess(
+            args=args,
+            returncode=7,
+            stdout="",
+            stderr=stderr,
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        CommandRunner(["crawler"]).run({"destination": "杭州"})
+
+    message = str(exc_info.value)
+    assert "crawler exited with 7" in message
+    assert "[REDACTED]" in message
+    for secret in (
+        "secret",
+        "abc.def",
+        "hidden",
+        "secret-key",
+        "pw",
+        "json-secret",
+        "xyz.123",
+    ):
+        assert secret not in message
