@@ -156,3 +156,41 @@ def test_flight_provider_reports_schema_change(monkeypatch) -> None:
     )
 
     assert result.status is ProviderStatus.SCHEMA_CHANGED
+
+
+def test_flight_provider_resolves_airports_with_installed_fli_cli(
+    monkeypatch,
+) -> None:
+    calls = []
+
+    def fake_run(*args, **kwargs) -> CompletedProcess:
+        calls.append(args[0])
+        return CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps(
+                [
+                    {
+                        "code": "SZX",
+                        "name": "Shenzhen Bao'an International Airport",
+                        "match_type": "name",
+                    }
+                ]
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("providers.flight.shutil.which", lambda _: "/usr/bin/fli")
+    monkeypatch.setattr("providers.flight.subprocess.run", fake_run)
+
+    assert FlightProvider().resolve_airports("Shenzhen") == ["SZX"]
+    assert calls[0] == ["fli", "airports", "Shenzhen", "--json"]
+
+
+def test_flight_provider_resolves_common_chinese_city_aliases(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr("providers.flight.shutil.which", lambda _: "/usr/bin/fli")
+
+    assert FlightProvider().resolve_airports("深圳") == ["SZX"]
+    assert FlightProvider().resolve_airports("张家界") == ["DYG"]
