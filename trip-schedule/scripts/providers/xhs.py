@@ -147,13 +147,13 @@ class XhsEvidenceProvider(Provider):
                 warnings=[str(exc)],
                 error_kind="external_crawler_not_found",
             )
-        except subprocess.TimeoutExpired as exc:
+        except subprocess.TimeoutExpired:
             return ProviderResult(
                 provider_id=self.provider_id,
                 status=ProviderStatus.NETWORK_ERROR,
                 queried_at=queried_at,
                 records=[],
-                warnings=[str(exc)],
+                warnings=["external crawler timed out"],
                 error_kind="external_crawler_timeout",
             )
         except OSError as exc:

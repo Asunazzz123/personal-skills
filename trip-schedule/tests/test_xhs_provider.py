@@ -101,6 +101,32 @@ def test_xhs_provider_maps_timeout_to_network_error(monkeypatch) -> None:
     assert result.error_kind == "external_crawler_timeout"
 
 
+def test_xhs_provider_redacts_timeout_command_arguments(monkeypatch) -> None:
+    monkeypatch.setenv("TRIP_XHS_COMMAND_JSON", '["xhs-wrapper"]')
+    provider = XhsEvidenceProvider()
+
+    def fail(_):
+        raise subprocess.TimeoutExpired(
+            [
+                "xhs-wrapper",
+                "--request-json",
+                '{"destination":"杭州","token":"secret"}',
+            ],
+            120,
+        )
+
+    monkeypatch.setattr(provider.runner, "run", fail)
+
+    result = provider.query(XhsQuery(destination="杭州"))
+    payload = result.model_dump_json()
+
+    assert result.status is ProviderStatus.NETWORK_ERROR
+    assert result.error_kind == "external_crawler_timeout"
+    assert "--request-json" not in payload
+    assert "secret" not in payload
+    assert '{"destination":"杭州","token":"secret"}' not in payload
+
+
 def test_xhs_provider_skips_rows_without_note_url(monkeypatch) -> None:
     monkeypatch.setenv("TRIP_XHS_COMMAND_JSON", '["xhs-wrapper"]')
     provider = XhsEvidenceProvider()
