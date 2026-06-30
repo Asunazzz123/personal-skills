@@ -1,0 +1,15 @@
+[
+  {
+    "name": "湖滨示例酒店",
+    "latitude": 30.257,
+    "longitude": 120.164,
+    "address": "杭州湖滨区域",
+    "total_price_cny": 920,
+    "nights": 2,
+    "rating": 4.6,
+    "review_count": 1200,
+    "transit_notes": ["步行 5 分钟到地铁站"],
+    "source": "configured-hotel-crawler",
+    "source_url": "https://example.invalid/hotel/1"
+  }
+]

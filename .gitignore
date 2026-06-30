@@ -1,2 +1,6 @@
 .DS_Store
+.superpowers/
+.pytest_cache/
 docs/
+tmp/
+output/

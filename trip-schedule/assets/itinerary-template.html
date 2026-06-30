@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; }
+      main { display: grid; grid-template-columns: minmax(320px, 38%) 1fr; min-height: 100vh; }
+      aside { padding: 20px; overflow: auto; background: #f7f4ed; }
+      #map { min-height: 100vh; }
+      .panel { background: white; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+      @media (max-width: 800px) {
+        main { grid-template-columns: 1fr; }
+        #map { min-height: 60vh; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <aside>
+        <section id="timeline" class="panel"></section>
+        <section id="budget" class="panel"></section>
+        <section id="evidence" class="panel"></section>
+      </aside>
+      <div id="map" aria-label="行程地图"></div>
+    </main>
+    <script id="trip-plan" type="application/json">{{ plan_json | safe }}</script>
+    <script>
+      async function boot() {
+        const config = await fetch("/runtime-config").then((response) => response.json());
+        window._AMapSecurityConfig = {
+          serviceHost: `${window.location.origin}/_AMapService`
+        };
+        const loader = document.createElement("script");
+        loader.src = "https://webapi.amap.com/loader.js";
+        loader.onload = async () => {
+          const AMap = await AMapLoader.load({
+            key: config.amapJsApiKey,
+            version: "2.0"
+          });
+          const map = new AMap.Map("map", { zoom: 11 });
+          const geojson = await fetch("routes.geojson").then((response) => response.json());
+          window.renderTrip(map, geojson, JSON.parse(
+            document.getElementById("trip-plan").textContent
+          ));
+        };
+        document.head.appendChild(loader);
+      }
+
+      window.renderTrip = function renderTrip(map, geojson, plan) {
+        const colors = ["#d35400", "#2874a6", "#239b56", "#7d3c98"];
+        const overlays = [];
+        geojson.features.forEach((feature, index) => {
+          if (feature.geometry?.type !== "LineString") return;
+          const path = feature.geometry.coordinates;
+          if (path.length < 2) return;
+          const polyline = new AMap.Polyline({
+            path,
+            strokeColor: colors[index % colors.length],
+            strokeWeight: 6,
+            showDir: true
+          });
+          const start = new AMap.Marker({
+            position: path[0],
+            title: feature.properties.origin_name
+          });
+          const end = new AMap.Marker({
+            position: path[path.length - 1],
+            title: feature.properties.destination_name
+          });
+          map.add([polyline, start, end]);
+          overlays.push(polyline, start, end);
+        });
+        if (overlays.length) map.setFitView(overlays);
+
+        const timeline = document.getElementById("timeline");
+        timeline.replaceChildren();
+        (plan.plans?.[0]?.routes || []).forEach((route) => {
+          const row = document.createElement("p");
+          row.textContent =
+            `${route.origin_name} → ${route.destination_name}: ` +
+            `${route.mode}, ${route.duration_minutes} min`;
+          timeline.appendChild(row);
+        });
+        document.getElementById("budget").textContent =
+          plan.plans?.[0] ? `Budget: CNY ${plan.plans[0].total_cost_cny}` : "No valid plan";
+        document.getElementById("evidence").textContent =
+          "See provider-report.json for source timestamps and warnings.";
+      };
+
+      boot().catch((error) => {
+        document.getElementById("evidence").textContent =
+          `Map failed to load: ${error.message}`;
+      });
+    </script>
+  </body>
+</html>

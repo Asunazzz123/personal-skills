@@ -1,0 +1,9 @@
+{
+  "origin_city": "深圳",
+  "destination": "杭州",
+  "budget_cny": 5000,
+  "departure_at": "2026-07-10T08:00:00+08:00",
+  "duration_days": 3,
+  "travelers": 2,
+  "generation_mode": "one_shot"
+}
