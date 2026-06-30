@@ -66,27 +66,55 @@ class FlightProvider(Provider):
                 warnings=["Install requirements.txt after explicit user approval."],
             )
 
-        completed = subprocess.run(
-            [
-                "fli",
-                "flights",
-                query.origin_iata,
-                query.destination_iata,
-                query.departure_date.isoformat(),
-                "--currency",
-                "CNY",
-                "--language",
-                "zh-CN",
-                "--country",
-                "CN",
-                "--format",
-                "json",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=45,
-        )
+        try:
+            completed = subprocess.run(
+                [
+                    "fli",
+                    "flights",
+                    query.origin_iata,
+                    query.destination_iata,
+                    query.departure_date.isoformat(),
+                    "--currency",
+                    "CNY",
+                    "--language",
+                    "zh-CN",
+                    "--country",
+                    "CN",
+                    "--format",
+                    "json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.NETWORK_ERROR,
+                queried_at=queried_at,
+                records=[],
+                error_kind=type(exc).__name__,
+                warnings=[str(exc)],
+            )
+        except FileNotFoundError as exc:
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.NOT_CONFIGURED,
+                queried_at=queried_at,
+                records=[],
+                error_kind=type(exc).__name__,
+                warnings=[str(exc)],
+            )
+        except OSError as exc:
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.NETWORK_ERROR,
+                queried_at=queried_at,
+                records=[],
+                error_kind=type(exc).__name__,
+                warnings=[str(exc)],
+            )
         if completed.returncode != 0:
             return ProviderResult(
                 provider_id=self.provider_id,
@@ -99,7 +127,10 @@ class FlightProvider(Provider):
 
         try:
             raw_records = _records(json.loads(completed.stdout))
-            offers = [self._normalize(row, queried_at) for row in raw_records]
+            offers = [
+                self._normalize(row, queried_at, query.travelers)
+                for row in raw_records
+            ]
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             return ProviderResult(
                 provider_id=self.provider_id,
@@ -121,6 +152,7 @@ class FlightProvider(Provider):
         self,
         row: dict[str, Any],
         queried_at: datetime,
+        travelers: int,
     ) -> TransportOffer:
         return TransportOffer(
             provider_id=self.provider_id,
@@ -131,7 +163,7 @@ class FlightProvider(Provider):
             departure_at=row["departure_datetime"],
             arrival_at=row["arrival_datetime"],
             duration_minutes=int(row["duration"]),
-            total_price_cny=float(row["price"]),
+            total_price_cny=float(row["price"]) * travelers,
             transfers=int(row.get("stops", 0)),
             booking_url=row.get("booking_url"),
             evidence=SourceEvidence(
