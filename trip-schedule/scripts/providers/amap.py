@@ -99,6 +99,55 @@ class AMapProvider(Provider):
             error_kind=error_kind,
         )
 
+    def search_poi(self, keyword: str, *, city: str) -> ProviderResult:
+        queried_at = datetime.now().astimezone()
+        if not self.key:
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.NOT_CONFIGURED,
+                queried_at=queried_at,
+                records=[],
+            )
+
+        payload, error = self._request_json(
+            "https://restapi.amap.com/v3/place/text",
+            params={
+                "key": self.key,
+                "keywords": keyword,
+                "city": city,
+                "citylimit": "true",
+                "offset": 5,
+            },
+            queried_at=queried_at,
+        )
+        if error is not None:
+            return error
+        if payload.get("status") != "1":
+            info = self._sanitize_message(str(payload.get("info", "unknown AMap error")))
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.NETWORK_ERROR,
+                queried_at=queried_at,
+                records=[],
+                warnings=[info],
+                error_kind="amap_error",
+            )
+
+        records = []
+        pois = payload.get("pois", [])
+        if not isinstance(pois, list):
+            pois = []
+        for item in pois:
+            record = self._normalize_poi(item, keyword)
+            if record is not None:
+                records.append(record)
+        return ProviderResult(
+            provider_id=self.provider_id,
+            status=ProviderStatus.OK if records else ProviderStatus.NO_RESULTS,
+            queried_at=queried_at,
+            records=records,
+        )
+
     def route_transit(
         self,
         origin: tuple[float, float],
@@ -288,6 +337,23 @@ class AMapProvider(Provider):
             longitude, latitude = location.split(",", maxsplit=1)
             return {
                 "formatted_address": item.get("formatted_address"),
+                "longitude": float(longitude),
+                "latitude": float(latitude),
+            }
+        except (TypeError, ValueError):
+            return None
+
+    def _normalize_poi(self, item: object, keyword: str) -> dict[str, object] | None:
+        if not isinstance(item, dict):
+            return None
+        location = item.get("location")
+        if not isinstance(location, str):
+            return None
+        try:
+            longitude, latitude = location.split(",", maxsplit=1)
+            return {
+                "name": item.get("name") or keyword,
+                "address": item.get("address") or None,
                 "longitude": float(longitude),
                 "latitude": float(latitude),
             }
