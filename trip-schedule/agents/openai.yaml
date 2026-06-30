@@ -1,0 +1,4 @@
+interface:
+  display_name: "Trip Schedule"
+  short_description: "Plan sourced, budget-aware trips in China"
+  default_prompt: "Use $trip-schedule to plan a sourced, budget-aware trip in mainland China."
