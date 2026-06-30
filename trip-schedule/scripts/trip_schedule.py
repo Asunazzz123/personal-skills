@@ -5,13 +5,24 @@ import json
 import sys
 from collections.abc import Sequence
 
+from providers.amap import AMapProvider
 from providers.flight import FlightProvider
+from providers.hotels import HotelProvider
 from providers.registry import ProviderRegistry
 from providers.train_12306 import Train12306Provider
+from providers.xhs import XhsEvidenceProvider
 
 
 def build_registry() -> ProviderRegistry:
-    return ProviderRegistry([Train12306Provider(), FlightProvider()])
+    return ProviderRegistry(
+        [
+            Train12306Provider(),
+            FlightProvider(),
+            XhsEvidenceProvider(),
+            HotelProvider(),
+            AMapProvider(),
+        ]
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
