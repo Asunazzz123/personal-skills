@@ -128,6 +128,46 @@ def test_provider_maps_repeated_redirect_to_structured_result(monkeypatch) -> No
     assert result.warnings
 
 
+def test_provider_maps_list_data_shape_to_schema_changed(monkeypatch) -> None:
+    provider = Train12306Provider()
+    monkeypatch.setattr(provider.client, "query", lambda **_: {"data": []})
+
+    result = provider.query(
+        TrainQuery(
+            origin_station="深圳北",
+            destination_station="广州南",
+            travel_date="2026-07-10",
+        )
+    )
+
+    assert result.status is ProviderStatus.SCHEMA_CHANGED
+    assert result.records == []
+    assert result.error_kind == "ValueError"
+    assert result.warnings
+
+
+def test_provider_maps_non_string_result_row_to_schema_changed(monkeypatch) -> None:
+    provider = Train12306Provider()
+    monkeypatch.setattr(
+        provider.client,
+        "query",
+        lambda **_: {"data": {"map": {}, "result": [None]}},
+    )
+
+    result = provider.query(
+        TrainQuery(
+            origin_station="深圳北",
+            destination_station="广州南",
+            travel_date="2026-07-10",
+        )
+    )
+
+    assert result.status is ProviderStatus.SCHEMA_CHANGED
+    assert result.records == []
+    assert result.error_kind == "ValueError"
+    assert result.warnings
+
+
 def test_ticket_client_follows_at_most_one_dynamic_query_url(monkeypatch) -> None:
     responses = iter(
         [

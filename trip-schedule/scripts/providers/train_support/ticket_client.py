@@ -32,10 +32,18 @@ def parse_query_response(
     query_date: str,
 ) -> list[dict[str, Any]]:
     data = payload.get("data", {})
+    if not isinstance(data, dict):
+        raise ValueError("12306 response data must be an object")
     station_map = data.get("map", {})
+    if not isinstance(station_map, dict):
+        raise ValueError("12306 response data.map must be an object")
     raw_results = data.get("result", [])
+    if not isinstance(raw_results, list):
+        raise ValueError("12306 response data.result must be a list")
     rows: list[dict[str, Any]] = []
     for raw in raw_results:
+        if not isinstance(raw, str):
+            raise ValueError("12306 response result rows must be strings")
         parts = raw.split("|")
         if len(parts) < 33:
             continue
