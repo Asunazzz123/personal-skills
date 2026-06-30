@@ -15,9 +15,12 @@ class ProviderRegistry:
             self.register(provider)
 
     def register(self, provider: Provider) -> None:
-        if provider.provider_id in self._providers:
-            raise ValueError(f"duplicate provider id: {provider.provider_id}")
-        self._providers[provider.provider_id] = provider
+        provider_id = getattr(provider, "provider_id", None)
+        if not isinstance(provider_id, str) or not provider_id:
+            raise ValueError("provider_id must be a non-empty string")
+        if provider_id in self._providers:
+            raise ValueError(f"duplicate provider id: {provider_id}")
+        self._providers[provider_id] = provider
 
     def get(self, provider_id: str) -> Provider:
         try:
