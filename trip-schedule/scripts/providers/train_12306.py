@@ -62,6 +62,15 @@ class Train12306Provider(Provider):
                 error_kind=type(exc).__name__,
                 warnings=[str(exc)],
             )
+        except (RuntimeError, ValueError) as exc:
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.SCHEMA_CHANGED,
+                queried_at=queried_at,
+                records=[],
+                error_kind=type(exc).__name__,
+                warnings=[str(exc)],
+            )
 
         offers = [
             TransportOffer(

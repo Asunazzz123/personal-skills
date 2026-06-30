@@ -51,6 +51,83 @@ def test_parse_query_response_rolls_overnight_arrival_to_next_day() -> None:
     assert row["arrival_at"].startswith("2026-08-01T00:30")
 
 
+def test_parse_query_response_uses_duration_for_multi_day_trip() -> None:
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    parts = payload["data"]["result"][0].split("|")
+    parts[8] = "08:00"
+    parts[9] = "09:00"
+    parts[10] = "25:00"
+    payload["data"]["result"][0] = "|".join(parts)
+
+    row = parse_query_response(payload, query_date="2026-07-10")[0]
+
+    assert row["arrival_at"].startswith("2026-07-11T09:00")
+    assert row["duration_minutes"] == 25 * 60
+
+
+def test_malformed_non_empty_result_maps_to_schema_changed(monkeypatch) -> None:
+    provider = Train12306Provider()
+    monkeypatch.setattr(
+        provider.client,
+        "query",
+        lambda **_: {"data": {"map": {}, "result": ["too|short"]}},
+    )
+
+    result = provider.query(
+        TrainQuery(
+            origin_station="深圳北",
+            destination_station="广州南",
+            travel_date="2026-07-10",
+        )
+    )
+
+    assert result.status is ProviderStatus.SCHEMA_CHANGED
+    assert result.records == []
+    assert result.error_kind == "ValueError"
+    assert result.warnings
+
+
+def test_provider_maps_unknown_station_to_structured_result() -> None:
+    provider = Train12306Provider()
+
+    result = provider.query(
+        TrainQuery(
+            origin_station="不存在站",
+            destination_station="广州南",
+            travel_date="2026-07-10",
+        )
+    )
+
+    assert result.status is ProviderStatus.SCHEMA_CHANGED
+    assert result.records == []
+    assert result.error_kind == "ValueError"
+    assert result.warnings
+
+
+def test_provider_maps_repeated_redirect_to_structured_result(monkeypatch) -> None:
+    provider = Train12306Provider()
+    monkeypatch.setattr(
+        provider.client,
+        "query",
+        lambda **_: (_ for _ in ()).throw(
+            RuntimeError("12306 returned repeated c_url redirects")
+        ),
+    )
+
+    result = provider.query(
+        TrainQuery(
+            origin_station="深圳北",
+            destination_station="广州南",
+            travel_date="2026-07-10",
+        )
+    )
+
+    assert result.status is ProviderStatus.SCHEMA_CHANGED
+    assert result.records == []
+    assert result.error_kind == "RuntimeError"
+    assert result.warnings
+
+
 def test_ticket_client_follows_at_most_one_dynamic_query_url(monkeypatch) -> None:
     responses = iter(
         [

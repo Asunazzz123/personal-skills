@@ -33,16 +33,16 @@ def parse_query_response(
 ) -> list[dict[str, Any]]:
     data = payload.get("data", {})
     station_map = data.get("map", {})
+    raw_results = data.get("result", [])
     rows: list[dict[str, Any]] = []
-    for raw in data.get("result", []):
+    for raw in raw_results:
         parts = raw.split("|")
         if len(parts) < 33:
             continue
         departure = datetime.fromisoformat(f"{query_date}T{parts[8]}:00+08:00")
-        arrival = datetime.fromisoformat(f"{query_date}T{parts[9]}:00+08:00")
-        if arrival < departure:
-            arrival += timedelta(days=1)
         hours, minutes = (int(value) for value in parts[10].split(":"))
+        duration_minutes = hours * 60 + minutes
+        arrival = departure + timedelta(minutes=duration_minutes)
         rows.append(
             {
                 "service_id": parts[3],
@@ -50,7 +50,7 @@ def parse_query_response(
                 "destination_name": station_map.get(parts[7], parts[7]),
                 "departure_at": departure.isoformat(),
                 "arrival_at": arrival.isoformat(),
-                "duration_minutes": hours * 60 + minutes,
+                "duration_minutes": duration_minutes,
                 "total_price_cny": None,
                 "availability": {
                     name: value
@@ -59,6 +59,8 @@ def parse_query_response(
                 },
             }
         )
+    if raw_results and not rows:
+        raise ValueError("12306 response contained no parseable result rows")
     return rows
 
 
