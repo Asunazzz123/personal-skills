@@ -40,6 +40,9 @@ class Train12306Provider(Provider):
             detail=f"{len(self.index.name_to_code)} stations loaded",
         )
 
+    def stations_for_city(self, city: str) -> list[str]:
+        return self.index.stations_for_city(city)
+
     def query(self, request: object) -> ProviderResult:
         query = TrainQuery.model_validate(request)
         queried_at = datetime.now().astimezone()

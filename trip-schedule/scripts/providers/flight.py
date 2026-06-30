@@ -54,6 +54,34 @@ class FlightProvider(Provider):
             detail=path,
         )
 
+    def resolve_airports(self, city: str) -> list[str]:
+        if shutil.which("fli") is None:
+            return []
+        try:
+            completed = subprocess.run(
+                ["fli", "airport-search", city, "--format", "json"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            return []
+        if completed.returncode != 0:
+            return []
+
+        try:
+            payload = json.loads(completed.stdout)
+            rows = payload if isinstance(payload, list) else payload.get("results", [])
+            codes = [
+                str(row["iata"]).upper()
+                for row in rows
+                if row.get("iata") and row.get("city") in {None, city}
+            ]
+        except (AttributeError, json.JSONDecodeError, KeyError, TypeError):
+            return []
+        return list(dict.fromkeys(codes))[:5]
+
     def query(self, request: object) -> ProviderResult:
         query = FlightQuery.model_validate(request)
         queried_at = datetime.now().astimezone()
