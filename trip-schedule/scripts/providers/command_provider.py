@@ -12,9 +12,14 @@ _SENSITIVE_KEYS = "authorization|api_key|password|cookie|token|key"
 
 def _redact_sensitive_stderr(stderr: str) -> str:
     redacted = re.sub(
+        r"(?im)^(\s*(?:Cookie|Authorization)\s*:\s*).*$",
+        r"\1[REDACTED]",
+        stderr,
+    )
+    redacted = re.sub(
         r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+",
         "Bearer [REDACTED]",
-        stderr,
+        redacted,
     )
     redacted = re.sub(
         rf'(?i)(["\']?(?:{_SENSITIVE_KEYS})["\']?\s*:\s*["\'])([^"\']+)(["\'])',
