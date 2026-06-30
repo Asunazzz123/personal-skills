@@ -44,18 +44,19 @@ class AMapProvider(Provider):
                 queried_at=queried_at,
                 records=[],
             )
-        response = self.session.get(
+        payload, error = self._request_json(
             "https://restapi.amap.com/v3/geocode/geo",
             params={"key": self.key, "address": address, "city": city or ""},
-            timeout=15,
+            queried_at=queried_at,
         )
-        response.raise_for_status()
-        payload = response.json()
+        if error is not None:
+            return error
         if payload.get("status") != "1":
-            info = str(payload.get("info", "unknown AMap error"))
+            raw_info = str(payload.get("info", "unknown AMap error"))
+            info = self._sanitize_message(raw_info)
             status = (
                 ProviderStatus.AUTHENTICATION_FAILED
-                if "KEY" in info or "SCODE" in info
+                if "KEY" in raw_info or "SCODE" in raw_info
                 else ProviderStatus.NETWORK_ERROR
             )
             return ProviderResult(
@@ -67,20 +68,35 @@ class AMapProvider(Provider):
                 error_kind="amap_error",
             )
         records = []
-        for item in payload.get("geocodes", []):
-            longitude, latitude = item["location"].split(",", maxsplit=1)
-            records.append(
-                {
-                    "formatted_address": item.get("formatted_address"),
-                    "longitude": float(longitude),
-                    "latitude": float(latitude),
-                }
+        warnings = []
+        geocodes = payload.get("geocodes", [])
+        if not isinstance(geocodes, list):
+            return ProviderResult(
+                provider_id=self.provider_id,
+                status=ProviderStatus.SCHEMA_CHANGED,
+                queried_at=queried_at,
+                records=[],
+                warnings=["AMap geocode response contained invalid geocode rows"],
+                error_kind="invalid_geocode_fields",
             )
+        for item in geocodes:
+            record = self._normalize_geocode(item)
+            if record is None:
+                warnings.append("Skipped AMap geocode row with invalid location")
+            else:
+                records.append(record)
+        status = ProviderStatus.OK if records else ProviderStatus.NO_RESULTS
+        error_kind = None
+        if geocodes and not records:
+            status = ProviderStatus.SCHEMA_CHANGED
+            error_kind = "invalid_geocode_fields"
         return ProviderResult(
             provider_id=self.provider_id,
-            status=ProviderStatus.OK if records else ProviderStatus.NO_RESULTS,
+            status=status,
             queried_at=queried_at,
             records=records,
+            warnings=warnings,
+            error_kind=error_kind,
         )
 
     def route_transit(
@@ -129,7 +145,7 @@ class AMapProvider(Provider):
                 records=[],
             )
 
-        response = self.session.get(
+        payload, error = self._request_json(
             url,
             params={
                 "key": self.key,
@@ -137,12 +153,12 @@ class AMapProvider(Provider):
                 "destination": self._format_coordinate(destination),
                 **extra,
             },
-            timeout=15,
+            queried_at=queried_at,
         )
-        response.raise_for_status()
-        payload = response.json()
+        if error is not None:
+            return error
         if payload.get("status") != "1":
-            info = str(payload.get("info", "unknown AMap error"))
+            info = self._sanitize_message(str(payload.get("info", "unknown AMap error")))
             return ProviderResult(
                 provider_id=self.provider_id,
                 status=ProviderStatus.NETWORK_ERROR,
@@ -198,6 +214,91 @@ class AMapProvider(Provider):
             error_kind="invalid_route_fields",
         )
 
+    def _request_json(
+        self,
+        url: str,
+        *,
+        params: dict[str, object],
+        queried_at: datetime,
+    ) -> tuple[dict[str, Any], ProviderResult | None]:
+        try:
+            response = self.session.get(url, params=params, timeout=15)
+            response.raise_for_status()
+        except requests.Timeout:
+            return (
+                {},
+                ProviderResult(
+                    provider_id=self.provider_id,
+                    status=ProviderStatus.NETWORK_ERROR,
+                    queried_at=queried_at,
+                    records=[],
+                    warnings=["AMap request timed out"],
+                    error_kind="amap_timeout",
+                ),
+            )
+        except requests.RequestException:
+            return (
+                {},
+                ProviderResult(
+                    provider_id=self.provider_id,
+                    status=ProviderStatus.NETWORK_ERROR,
+                    queried_at=queried_at,
+                    records=[],
+                    warnings=["AMap request failed"],
+                    error_kind="amap_request_error",
+                ),
+            )
+
+        try:
+            payload = response.json()
+        except ValueError:
+            return (
+                {},
+                ProviderResult(
+                    provider_id=self.provider_id,
+                    status=ProviderStatus.SCHEMA_CHANGED,
+                    queried_at=queried_at,
+                    records=[],
+                    warnings=["AMap response was not valid JSON"],
+                    error_kind="amap_invalid_json",
+                ),
+            )
+
+        if not isinstance(payload, dict):
+            return (
+                {},
+                ProviderResult(
+                    provider_id=self.provider_id,
+                    status=ProviderStatus.SCHEMA_CHANGED,
+                    queried_at=queried_at,
+                    records=[],
+                    warnings=["AMap response JSON schema changed"],
+                    error_kind="amap_schema_changed",
+                ),
+            )
+        return payload, None
+
+    def _normalize_geocode(self, item: object) -> dict[str, object] | None:
+        if not isinstance(item, dict):
+            return None
+        location = item.get("location")
+        if not isinstance(location, str):
+            return None
+        try:
+            longitude, latitude = location.split(",", maxsplit=1)
+            return {
+                "formatted_address": item.get("formatted_address"),
+                "longitude": float(longitude),
+                "latitude": float(latitude),
+            }
+        except (TypeError, ValueError):
+            return None
+
+    def _sanitize_message(self, message: str) -> str:
+        if self.key:
+            return message.replace(self.key, "[redacted]")
+        return message
+
     def _route_candidates(
         self,
         payload: dict[str, Any],
@@ -240,7 +341,7 @@ class AMapProvider(Provider):
             try:
                 longitude, latitude = raw_point.split(",", maxsplit=1)
                 points.append([float(longitude), float(latitude)])
-            except ValueError:
+            except (TypeError, ValueError):
                 continue
         return points
 
