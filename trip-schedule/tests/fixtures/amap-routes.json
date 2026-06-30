@@ -1,0 +1,28 @@
+{
+  "driving": {
+    "status": "1",
+    "route": {
+      "paths": [
+        {
+          "distance": "8200",
+          "duration": "1500",
+          "steps": [
+            {"polyline": "120.100,30.200;120.150,30.250"}
+          ]
+        }
+      ]
+    }
+  },
+  "transit": {
+    "status": "1",
+    "route": {
+      "transits": [
+        {
+          "distance": "9000",
+          "duration": "2700",
+          "cost": "6"
+        }
+      ]
+    }
+  }
+}
