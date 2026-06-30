@@ -1,6 +1,62 @@
 {
   "version": 1,
-  "updated_at": null,
-  "regions": {},
-  "providers": {}
+  "updated_at": "2026-06-30T23:38:54.222831+08:00",
+  "regions": {
+    "张家界": {
+      "query_keywords": [
+        "张家界 景点",
+        "张家界 旅游攻略"
+      ],
+      "routing_notes": [],
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    }
+  },
+  "providers": {
+    "transport-train": {
+      "success_count": 1,
+      "failure_count": 1,
+      "last_status": "ok",
+      "status_counts": {
+        "network_error": 1,
+        "ok": 1
+      },
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    },
+    "transport-flight": {
+      "success_count": 0,
+      "failure_count": 2,
+      "last_status": "not_configured",
+      "status_counts": {
+        "not_configured": 2
+      },
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    },
+    "evidence-xhs": {
+      "success_count": 0,
+      "failure_count": 2,
+      "last_status": "not_configured",
+      "status_counts": {
+        "not_configured": 2
+      },
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    },
+    "hotels-external": {
+      "success_count": 0,
+      "failure_count": 2,
+      "last_status": "not_configured",
+      "status_counts": {
+        "not_configured": 2
+      },
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    },
+    "attractions-resolved": {
+      "success_count": 0,
+      "failure_count": 2,
+      "last_status": "no_results",
+      "status_counts": {
+        "no_results": 2
+      },
+      "updated_at": "2026-06-30T23:38:54.222831+08:00"
+    }
+  }
 }

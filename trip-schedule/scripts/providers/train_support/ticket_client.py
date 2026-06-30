@@ -81,10 +81,26 @@ class TicketClient:
         self.session.trust_env = False
         self.session.headers.update(
             {
-                "User-Agent": "Mozilla/5.0",
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
                 "Referer": "https://kyfw.12306.cn/otn/leftTicket/init",
+                "Host": "kyfw.12306.cn",
             }
         )
+        self._cookies_initialized = False
+
+    def _ensure_cookies(self) -> None:
+        if self._cookies_initialized:
+            return
+        response = self.session.get(
+            "https://kyfw.12306.cn/otn/leftTicket/init",
+            timeout=15,
+        )
+        response.raise_for_status()
+        self._cookies_initialized = True
 
     def query(
         self,
@@ -103,6 +119,7 @@ class TicketClient:
             ),
             "purpose_codes": "ADULT",
         }
+        self._ensure_cookies()
         query_url = "https://kyfw.12306.cn/otn/leftTicket/queryG"
         for attempt in range(2):
             response = self.session.get(query_url, params=params, timeout=15)
