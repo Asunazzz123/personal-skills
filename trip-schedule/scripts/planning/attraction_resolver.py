@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import Field, ValidationError
 
-from models import Attraction, ProviderResult, ProviderStatus, SourceEvidence
+from models import Attraction, ProviderResult, ProviderStatus, SourceEvidence, StrictModel
 
 
 class POISearch(Protocol):
@@ -13,7 +13,7 @@ class POISearch(Protocol):
         ...
 
 
-class AttractionCandidate(BaseModel):
+class AttractionCandidate(StrictModel):
     name: str
     description: str
     source_url: str
@@ -39,9 +39,22 @@ class AttractionResolver:
             if result.status is not ProviderStatus.OK or not result.records:
                 warnings.append(f"AMap could not resolve: {candidate.name}")
                 continue
-            poi = result.records[0]
-            attractions.append(
-                Attraction(
+
+            attraction = self._first_valid_attraction(candidate, result)
+            if attraction is None:
+                warnings.append(f"AMap returned invalid POI: {candidate.name}")
+                continue
+            attractions.append(attraction)
+        return attractions, warnings
+
+    def _first_valid_attraction(
+        self,
+        candidate: AttractionCandidate,
+        result: ProviderResult,
+    ) -> Attraction | None:
+        for poi in result.records:
+            try:
+                return Attraction(
                     name=poi["name"],
                     description=candidate.description,
                     latitude=poi["latitude"],
@@ -49,20 +62,28 @@ class AttractionResolver:
                     address=poi.get("address"),
                     ticket_price_cny=candidate.ticket_price_cny,
                     suggested_visit_minutes=candidate.suggested_visit_minutes,
-                    evidence=[
-                        SourceEvidence(
-                            source="Xiaohongshu",
-                            source_url=candidate.source_url,
-                            queried_at=candidate.queried_at,
-                            confidence=0.65,
-                        ),
-                        SourceEvidence(
-                            source="AMap",
-                            source_url="https://lbs.amap.com/",
-                            queried_at=result.queried_at,
-                            confidence=0.9,
-                        ),
-                    ],
+                    evidence=self._evidence(candidate, result),
                 )
-            )
-        return attractions, warnings
+            except (KeyError, ValidationError):
+                continue
+        return None
+
+    def _evidence(
+        self,
+        candidate: AttractionCandidate,
+        result: ProviderResult,
+    ) -> list[SourceEvidence]:
+        return [
+            SourceEvidence(
+                source="Xiaohongshu",
+                source_url=candidate.source_url,
+                queried_at=candidate.queried_at,
+                confidence=0.65,
+            ),
+            SourceEvidence(
+                source="AMap",
+                source_url="https://lbs.amap.com/",
+                queried_at=result.queried_at,
+                confidence=0.9,
+            ),
+        ]
