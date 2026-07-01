@@ -11,6 +11,17 @@ from typing import Any
 
 SENSITIVE_WORDS = ("cookie", "token", "authorization", "sign", "profile")
 
+MEDIACRAWLER_BOOTSTRAP = (
+    "import os;"
+    "import config;"
+    "config.ENABLE_CDP_MODE=os.getenv('MEDIACRAWLER_ENABLE_CDP_MODE','false').lower() in ('1','true','yes','y','t');"
+    "config.CDP_CONNECT_EXISTING=os.getenv('MEDIACRAWLER_CDP_CONNECT_EXISTING','false').lower() in ('1','true','yes','y','t');"
+    "config.BROWSER_LAUNCH_TIMEOUT=int(os.getenv('MEDIACRAWLER_BROWSER_LAUNCH_TIMEOUT','15'));"
+    "from tools.app_runner import run;"
+    "import main as mediacrawler_main;"
+    "run(mediacrawler_main.main, mediacrawler_main.async_cleanup, cleanup_timeout_seconds=15.0)"
+)
+
 
 def _fail(message: str, *, code: int = 2) -> None:
     print(_redact(message), file=sys.stderr)
@@ -52,6 +63,37 @@ def _limit(request: dict[str, Any]) -> int:
         return 10
 
 
+def _login_mode() -> str:
+    raw = os.getenv("TRIP_XHS_LOGIN_MODE", "qrcode").strip().lower()
+    if raw not in {"qrcode", "phone", "cookie"}:
+        _fail("TRIP_XHS_LOGIN_MODE must be one of qrcode, phone, or cookie.")
+    return raw
+
+
+def build_mediacrawler_env(base_env: dict[str, str] | None = None) -> dict[str, str]:
+    env = dict(base_env if base_env is not None else os.environ)
+    browser_mode = os.getenv("TRIP_XHS_BROWSER_MODE", "standard").strip().lower()
+    if browser_mode == "standard":
+        enable_cdp = "false"
+        connect_existing = "false"
+    elif browser_mode == "cdp-new":
+        enable_cdp = "true"
+        connect_existing = "false"
+    elif browser_mode == "cdp-existing":
+        enable_cdp = "true"
+        connect_existing = "true"
+    else:
+        _fail("TRIP_XHS_BROWSER_MODE must be one of standard, cdp-new, or cdp-existing.")
+    env["MEDIACRAWLER_ENABLE_CDP_MODE"] = enable_cdp
+    env["MEDIACRAWLER_CDP_CONNECT_EXISTING"] = connect_existing
+    env.setdefault(
+        "MEDIACRAWLER_BROWSER_LAUNCH_TIMEOUT",
+        os.getenv("TRIP_XHS_BROWSER_LAUNCH_TIMEOUT", "15"),
+    )
+    env.setdefault("PYTHONUNBUFFERED", "1")
+    return env
+
+
 def build_mediacrawler_command(
     *,
     request: dict[str, Any],
@@ -60,21 +102,31 @@ def build_mediacrawler_command(
     keywords = _keywords(request)
     if not keywords:
         _fail("request must include destination or non-empty keywords.")
+    python_executable = os.getenv("MEDIACRAWLER_PYTHON", "python")
     return [
-        "python",
-        "main.py",
+        python_executable,
+        "-c",
+        MEDIACRAWLER_BOOTSTRAP,
         "--platform",
         "xhs",
+        "--lt",
+        _login_mode(),
         "--type",
         "search",
         "--keywords",
         ",".join(keywords),
         "--save_data_option",
-        "json",
-        "--output_dir",
+        "jsonl",
+        "--save_data_path",
         str(output_dir),
-        "--max_notes",
+        "--crawler_max_notes_count",
         str(_limit(request)),
+        "--get_comment",
+        "false",
+        "--get_sub_comment",
+        "false",
+        "--headless",
+        "false",
     ]
 
 
@@ -159,6 +211,7 @@ def run(
         text=True,
         timeout=180,
         shell=False,
+        env=build_mediacrawler_env(),
     )
     if completed.returncode != 0:
         _fail(
