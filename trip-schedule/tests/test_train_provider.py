@@ -199,6 +199,43 @@ def test_ticket_client_follows_at_most_one_dynamic_query_url(monkeypatch) -> Non
 
     assert payload["data"]["result"] == []
     assert calls == [
+        "https://kyfw.12306.cn/otn/leftTicket/init",
         "https://kyfw.12306.cn/otn/leftTicket/queryG",
         "https://kyfw.12306.cn/otn/leftTicket/queryA",
+    ]
+
+
+def test_ticket_client_initializes_cookies_before_left_ticket_query(
+    monkeypatch,
+) -> None:
+    provider = Train12306Provider()
+    calls = []
+
+    class Response:
+        def __init__(self, payload: dict) -> None:
+            self.payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self.payload
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        if url == "https://kyfw.12306.cn/otn/leftTicket/init":
+            return Response({})
+        return Response({"data": {"result": [], "map": {}}})
+
+    monkeypatch.setattr(provider.client.session, "get", fake_get)
+
+    provider.client.query(
+        origin_station="深圳北",
+        destination_station="广州南",
+        travel_date="2026-07-10",
+    )
+
+    assert calls[:2] == [
+        "https://kyfw.12306.cn/otn/leftTicket/init",
+        "https://kyfw.12306.cn/otn/leftTicket/queryG",
     ]

@@ -37,6 +37,20 @@ def _records(payload: Any) -> list[dict[str, Any]]:
     raise ValueError("unsupported fli JSON schema")
 
 
+CITY_AIRPORT_ALIASES = {
+    "北京": ["PEK", "PKX"],
+    "上海": ["PVG", "SHA"],
+    "广州": ["CAN"],
+    "深圳": ["SZX"],
+    "张家界": ["DYG"],
+    "杭州": ["HGH"],
+    "长沙": ["CSX"],
+    "成都": ["CTU", "TFU"],
+    "重庆": ["CKG"],
+    "西安": ["XIY"],
+}
+
+
 class FlightProvider(Provider):
     provider_id = "flight-fli"
 
@@ -55,11 +69,13 @@ class FlightProvider(Provider):
         )
 
     def resolve_airports(self, city: str) -> list[str]:
+        if city in CITY_AIRPORT_ALIASES:
+            return CITY_AIRPORT_ALIASES[city][:5]
         if shutil.which("fli") is None:
             return []
         try:
             completed = subprocess.run(
-                ["fli", "airport-search", city, "--format", "json"],
+                ["fli", "airports", city, "--json"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -74,9 +90,9 @@ class FlightProvider(Provider):
             payload = json.loads(completed.stdout)
             rows = payload if isinstance(payload, list) else payload.get("results", [])
             codes = [
-                str(row["iata"]).upper()
+                str(row.get("iata") or row.get("code")).upper()
                 for row in rows
-                if row.get("iata") and row.get("city") in {None, city}
+                if row.get("iata") or row.get("code")
             ]
         except (AttributeError, json.JSONDecodeError, KeyError, TypeError):
             return []
