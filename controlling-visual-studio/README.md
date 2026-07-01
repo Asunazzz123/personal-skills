@@ -6,7 +6,7 @@ It uses the least fragile control surface available:
 
 1. CLI and project files for repeatable builds and diagnostics.
 2. EnvDTE automation for the active Visual Studio instance.
-3. Computer Use only when a task depends on Visual Studio UI state.
+3. Computer Use (Codex plugin needed) only when a task depends on Visual Studio UI state.
 
 ## Included scripts
 
