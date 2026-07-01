@@ -53,6 +53,15 @@ the contract in [data-contracts.md](references/data-contracts.md). Do not invent
 an attraction, ticket price, opening hour, or source. Let AMap resolve each
 candidate to a real POI.
 
+When the user asks for restaurant recommendations, review sourced dining
+evidence and write structured restaurant candidates using the contract in
+[data-contracts.md](references/data-contracts.md). Keep the evidence extraction
+separate from scoring: the agent extracts restaurant names, cuisine tags,
+budget/person, source URLs, and travel-stage estimates; the independent
+`planning.restaurant_scoring` module ranks those candidates from the structured
+fields. Do not couple restaurant ranking to the Xiaohongshu wrapper, 12306
+provider, or AMap provider internals.
+
 ## Generate
 
 Write the six inputs and selected mode to `request.json`, then run:

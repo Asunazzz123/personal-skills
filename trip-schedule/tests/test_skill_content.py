@@ -36,3 +36,15 @@ def test_skill_states_read_only_boundary() -> None:
     assert "do not book" in text
     assert "do not pay" in text
     assert "do not bypass" in text
+
+
+def test_skill_documents_independent_restaurant_ranking() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    contract_text = (SKILL_ROOT / "references/data-contracts.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "planning.restaurant_scoring" in skill_text
+    assert "Do not couple restaurant ranking" in skill_text
+    assert "Restaurant candidate handoff" in contract_text
+    assert "must not import crawler wrappers" in contract_text
