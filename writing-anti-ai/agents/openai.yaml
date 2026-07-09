@@ -1,6 +1,0 @@
-interface:
-  display_name: "Writing Anti-AI"
-  short_description: "Remove AI writing patterns from prose"
-  default_prompt: "Use $writing-anti-ai to remove AI writing patterns from this text while preserving its meaning and tone."
-policy:
-  allow_implicit_invocation: true
