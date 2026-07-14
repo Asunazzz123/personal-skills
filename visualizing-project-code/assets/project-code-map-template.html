@@ -23,8 +23,8 @@
       --violet: #7d5cc6;
       --violet-soft: #f2edff;
       --gray: #8892a3;
-      --shadow: 0 14px 34px rgba(52, 58, 64, 0.08);
-      --radius: 8px;
+      --shadow: 0 18px 48px rgba(43, 51, 66, 0.10), 0 2px 8px rgba(43, 51, 66, 0.05);
+      --radius: 12px;
     }
 
     * { box-sizing: border-box; }
@@ -34,6 +34,7 @@
       background: var(--bg);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     .app {
@@ -49,8 +50,9 @@
       align-items: start;
       padding: 22px 28px 20px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 253, 248, 0.82);
-      backdrop-filter: blur(8px);
+      background: linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(250, 246, 238, 0.88));
+      backdrop-filter: blur(12px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
     }
 
     h1 {
@@ -85,9 +87,11 @@
 
     .left-panel,
     .right-panel {
-      background: rgba(255, 253, 248, 0.92);
+      background: rgba(255, 253, 248, 0.94);
       min-width: 0;
       overflow: auto;
+      scrollbar-color: #c9cfc7 transparent;
+      scrollbar-width: thin;
     }
 
     .left-panel {
@@ -104,6 +108,7 @@
       min-width: 0;
       padding: 20px;
       overflow: hidden;
+      background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.65), transparent 45%);
     }
 
     .group {
@@ -137,6 +142,7 @@
       color: var(--ink);
       font: inherit;
       font-size: 13px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease, transform 140ms ease;
     }
 
     select,
@@ -149,12 +155,25 @@
     button {
       cursor: pointer;
       font-weight: 750;
+      background: linear-gradient(180deg, #fff, #fbfaf6);
     }
 
     button:hover,
     select:hover,
     input:hover {
       border-color: #b8c1b7;
+      box-shadow: 0 4px 12px rgba(43, 51, 66, 0.08);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(59, 114, 255, 0.18);
+      outline-offset: 1px;
+      border-color: var(--blue);
     }
 
     .control-grid {
@@ -188,7 +207,7 @@
       min-height: 600px;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
-      background: rgba(255, 253, 248, 0.78);
+      background: rgba(255, 253, 248, 0.84);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -202,7 +221,7 @@
       gap: 12px;
       padding: 14px 16px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 253, 248, 0.96);
+      background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(250, 246, 238, 0.94));
     }
 
     .view-title {
@@ -244,11 +263,12 @@
       min-width: 0;
       min-height: 0;
       overflow: hidden;
+      position: relative;
       background:
-        linear-gradient(90deg, rgba(38, 48, 66, 0.045) 1px, transparent 1px),
-        linear-gradient(rgba(38, 48, 66, 0.045) 1px, transparent 1px);
+        radial-gradient(circle, rgba(61, 72, 91, 0.13) 1px, transparent 1.2px);
       background-color: #fbfaf6;
-      background-size: 32px 32px;
+      background-size: 24px 24px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
     }
 
     svg {
@@ -265,15 +285,35 @@
       fill: none;
       stroke: #8b96a8;
       stroke-width: 2;
-      marker-end: url(#arrow);
+      marker-end: url(#arrow-default);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+      transition: opacity 140ms ease, stroke-width 140ms ease, filter 140ms ease;
     }
 
-    .edge.inferred { stroke-dasharray: 7 6; }
-    .edge.case_path { stroke: var(--green); stroke-width: 3; }
+    .edge.inferred { stroke-dasharray: 7 6; marker-end: url(#arrow-default); }
+    .edge.case_path { stroke: var(--green); stroke-width: 3; marker-end: url(#arrow-case); }
     .edge.boundary-call,
-    .edge.external_call { stroke: var(--orange); }
-    .edge.risk-edge { stroke: var(--red); }
-    .edge.resource-lifecycle { stroke: var(--violet); }
+    .edge.external_call { stroke: var(--orange); marker-end: url(#arrow-boundary); }
+    .edge.risk-edge { stroke: var(--red); marker-end: url(#arrow-risk); }
+    .edge.resource-lifecycle { stroke: var(--violet); marker-end: url(#arrow-resource); }
+
+    .edge-group:hover .edge,
+    .edge-group.connected .edge {
+      stroke-width: 3.5;
+      filter: drop-shadow(0 2px 3px rgba(43, 51, 66, 0.22));
+    }
+
+    .edge-group.dimmed { opacity: 0.2; }
+
+    .edge-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 14;
+      pointer-events: stroke;
+      cursor: help;
+    }
 
     .edge-label {
       fill: #687386;
@@ -282,16 +322,39 @@
       stroke: #fbfaf6;
       stroke-width: 4px;
       letter-spacing: 0;
+      font-weight: 750;
+      pointer-events: none;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    .edge-label-bg {
+      fill: rgba(251, 250, 246, 0.92);
+      stroke: rgba(216, 222, 208, 0.88);
+      stroke-width: 1;
+      rx: 5;
+      ry: 5;
+      pointer-events: none;
     }
 
     .node rect {
       width: 170px;
       height: 62px;
-      rx: 0;
-      ry: 0;
+      rx: 10;
+      ry: 10;
       fill: var(--blue-soft);
       stroke: var(--blue);
       stroke-width: 2;
+      filter: drop-shadow(0 5px 8px rgba(43, 51, 66, 0.10));
+      vector-effect: non-scaling-stroke;
+      transition: filter 140ms ease, stroke-width 140ms ease;
+    }
+
+    .node { cursor: pointer; }
+
+    .node:hover rect {
+      stroke-width: 3;
+      filter: drop-shadow(0 9px 12px rgba(43, 51, 66, 0.16));
     }
 
     .node.interface rect {
@@ -327,6 +390,7 @@
     .node.selected rect {
       stroke: var(--red);
       stroke-width: 3;
+      filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)) drop-shadow(0 8px 14px rgba(207, 49, 85, 0.2));
     }
 
     .node text {
@@ -463,9 +527,21 @@
         border-bottom: 1px solid var(--line);
       }
       .stage { padding: 14px; }
+      .graph-topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .legend { justify-content: flex-start; }
       .graph-card {
         height: 68vh;
         min-height: 480px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -553,9 +629,11 @@
           <div class="canvas-wrap">
             <svg id="graph" role="img" aria-label="Code asset graph">
               <defs>
-                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                  <path d="M0,0 L0,6 L9,3 z" fill="#8b96a8"></path>
-                </marker>
+                <marker id="arrow-default" markerWidth="7" markerHeight="7" refX="6.2" refY="2.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,5 L6.4,2.5 z" fill="#8b96a8"></path></marker>
+                <marker id="arrow-case" markerWidth="7" markerHeight="7" refX="6.2" refY="2.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,5 L6.4,2.5 z" fill="#2fa56f"></path></marker>
+                <marker id="arrow-boundary" markerWidth="7" markerHeight="7" refX="6.2" refY="2.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,5 L6.4,2.5 z" fill="#c87b28"></path></marker>
+                <marker id="arrow-risk" markerWidth="7" markerHeight="7" refX="6.2" refY="2.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,5 L6.4,2.5 z" fill="#cf3155"></path></marker>
+                <marker id="arrow-resource" markerWidth="7" markerHeight="7" refX="6.2" refY="2.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,5 L6.4,2.5 z" fill="#7d5cc6"></path></marker>
               </defs>
               <g id="viewport"></g>
             </svg>
@@ -920,6 +998,7 @@
       selectedId: null,
       dragging: false,
       dragStart: null,
+      dragMoved: false,
       filters: {
         search: "",
         phase: "",
@@ -1068,6 +1147,7 @@
 
     function render() {
       const view = activeView();
+      layoutColumns(view);
       els.viewSelect.value = view.id;
       els.viewTitle.textContent = text(view.label);
       renderLegend();
@@ -1085,6 +1165,56 @@
         if (selected) showDetails(selected);
       }
       applyTransform();
+    }
+
+    const NODE_WIDTH = 170;
+    const MIN_COLUMN_GAP = 96;
+    const EDGE_LABEL_PADDING = 10;
+    const EDGE_LABEL_CLEARANCE = 24;
+    const edgeLabelMeasure = document.createElement("canvas").getContext("2d");
+
+    function measureEdgeLabel(value) {
+      if (!edgeLabelMeasure) return String(value || "").length * 10;
+      edgeLabelMeasure.font = '750 11px Inter, "Segoe UI", sans-serif';
+      return Math.ceil(edgeLabelMeasure.measureText(String(value || "")).width);
+    }
+
+    function layoutColumns(view) {
+      view.nodes.forEach((node) => {
+        if (!Object.prototype.hasOwnProperty.call(node, "_baseX")) {
+          Object.defineProperty(node, "_baseX", { value: node.x, enumerable: false });
+        }
+      });
+      const columns = Array.from(new Set(view.nodes.map((node) => node._baseX))).sort((a, b) => a - b);
+      if (columns.length < 2) return;
+      const gaps = Array(columns.length - 1).fill(MIN_COLUMN_GAP);
+      const nodesById = new Map(view.nodes.map((node) => [node.id, node]));
+
+      view.edges.forEach((edge) => {
+        const from = nodesById.get(edge.from);
+        const to = nodesById.get(edge.to);
+        if (!from || !to) return;
+        const fromColumn = columns.indexOf(from._baseX);
+        const toColumn = columns.indexOf(to._baseX);
+        if (Math.abs(fromColumn - toColumn) !== 1) return;
+        const boundary = Math.min(fromColumn, toColumn);
+        const labelWidth = measureEdgeLabel(text(edge.label) || edge.kind || "");
+        gaps[boundary] = Math.max(
+          gaps[boundary],
+          labelWidth + EDGE_LABEL_PADDING + EDGE_LABEL_CLEARANCE * 2
+        );
+      });
+
+      const positions = new Map([[columns[0], columns[0]]]);
+      for (let index = 1; index < columns.length; index += 1) {
+        positions.set(
+          columns[index],
+          positions.get(columns[index - 1]) + NODE_WIDTH + gaps[index - 1]
+        );
+      }
+      view.nodes.forEach((node) => {
+        node.x = positions.get(node._baseX);
+      });
     }
 
     function filteredNodes(view) {
@@ -1137,23 +1267,83 @@
         const from = view.nodes.find((node) => node.id === edge.from);
         const to = view.nodes.find((node) => node.id === edge.to);
         if (!from || !to) return;
-        const x1 = from.x + 170;
-        const y1 = from.y + 31;
-        const x2 = to.x;
-        const y2 = to.y + 31;
-        const midX = (x1 + x2) / 2;
+        const route = edgeRoute(from, to);
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.setAttribute("class", `edge-group ${state.selectedId && (edge.from === state.selectedId || edge.to === state.selectedId) ? "connected" : state.selectedId ? "dimmed" : ""}`);
+        group.dataset.from = edge.from;
+        group.dataset.to = edge.to;
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", `edge ${edge.kind || ""} ${edge.inferred ? "inferred" : ""}`);
-        path.setAttribute("d", `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
-        els.viewport.appendChild(path);
+        path.setAttribute("d", route.d);
+        group.appendChild(path);
 
-        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        label.setAttribute("class", "edge-label");
-        label.setAttribute("x", midX - 28);
-        label.setAttribute("y", ((y1 + y2) / 2) - 7);
-        label.textContent = text(edge.label) || edge.kind || "";
-        els.viewport.appendChild(label);
+        const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hit.setAttribute("class", "edge-hit");
+        hit.setAttribute("d", route.d);
+        const edgeLabel = text(edge.label) || edge.kind || "";
+        const edgeDescription = `${text(from.label)} → ${text(to.label)}: ${edgeLabel}`;
+        hit.setAttribute("aria-label", edgeDescription);
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = edgeDescription;
+        hit.appendChild(title);
+        group.appendChild(hit);
+
+        els.viewport.appendChild(group);
+
+        if (edgeLabel) {
+          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          label.setAttribute("class", "edge-label");
+          label.setAttribute("x", route.labelX);
+          label.setAttribute("y", route.labelY);
+          label.textContent = edgeLabel;
+          group.appendChild(label);
+          const labelBox = label.getBBox();
+          const labelBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          labelBg.setAttribute("class", "edge-label-bg");
+          labelBg.setAttribute("x", labelBox.x - 5);
+          labelBg.setAttribute("y", labelBox.y - 3);
+          labelBg.setAttribute("width", labelBox.width + 10);
+          labelBg.setAttribute("height", labelBox.height + 6);
+          group.insertBefore(labelBg, label);
+        }
       });
+    }
+
+    function edgeRoute(from, to) {
+      const width = 170;
+      const height = 62;
+      const a = { x: from.x + width / 2, y: from.y + height / 2 };
+      const b = { x: to.x + width / 2, y: to.y + height / 2 };
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const horizontal = Math.abs(dx) >= Math.abs(dy);
+      let start;
+      let end;
+      let c1;
+      let c2;
+
+      if (horizontal) {
+        const direction = dx >= 0 ? 1 : -1;
+        start = { x: a.x + direction * width / 2, y: a.y };
+        end = { x: b.x - direction * width / 2, y: b.y };
+        const bend = Math.max(42, Math.abs(end.x - start.x) * 0.46);
+        c1 = { x: start.x + direction * bend, y: start.y };
+        c2 = { x: end.x - direction * bend, y: end.y };
+      } else {
+        const direction = dy >= 0 ? 1 : -1;
+        start = { x: a.x, y: a.y + direction * height / 2 };
+        end = { x: b.x, y: b.y - direction * height / 2 };
+        const bend = Math.max(38, Math.abs(end.y - start.y) * 0.46);
+        c1 = { x: start.x, y: start.y + direction * bend };
+        c2 = { x: end.x, y: end.y - direction * bend };
+      }
+
+      return {
+        d: `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`,
+        labelX: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8,
+        labelY: ((start.y + 3 * c1.y + 3 * c2.y + end.y) / 8) - (horizontal ? 16 : 10)
+      };
     }
 
     function renderNodes(nodes) {
@@ -1163,6 +1353,10 @@
         g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
         g.addEventListener("click", (event) => {
           event.stopPropagation();
+          if (state.dragMoved) {
+            state.dragMoved = false;
+            return;
+          }
           state.selectedId = node.id;
           showDetails(node);
           render();
@@ -1231,6 +1425,7 @@
         renderArtifacts();
         renderDeepDives();
         render();
+        fitGraph();
       });
       els.viewSelect.addEventListener("change", () => {
         state.viewId = els.viewSelect.value;
@@ -1268,22 +1463,32 @@
 
       els.graph.addEventListener("wheel", (event) => {
         event.preventDefault();
-        zoom(event.deltaY < 0 ? 1.08 : 1 / 1.08);
+        zoom(event.deltaY < 0 ? 1.08 : 1 / 1.08, event.clientX, event.clientY);
       }, { passive: false });
       els.graph.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
         state.dragging = true;
+        state.dragMoved = false;
         state.dragStart = { x: event.clientX - state.x, y: event.clientY - state.y };
+        els.graph.setPointerCapture?.(event.pointerId);
         els.graph.classList.add("dragging");
       });
       els.graph.addEventListener("pointermove", (event) => {
         if (!state.dragging) return;
-        state.x = event.clientX - state.dragStart.x;
-        state.y = event.clientY - state.dragStart.y;
+        const nextX = event.clientX - state.dragStart.x;
+        const nextY = event.clientY - state.dragStart.y;
+        if (Math.abs(nextX - state.x) + Math.abs(nextY - state.y) > 3) state.dragMoved = true;
+        state.x = nextX;
+        state.y = nextY;
         applyTransform();
       });
       els.graph.addEventListener("pointerup", stopDrag);
       els.graph.addEventListener("pointerleave", stopDrag);
       els.graph.addEventListener("click", () => {
+        if (state.dragMoved) {
+          state.dragMoved = false;
+          return;
+        }
         state.selectedId = null;
         showEmptyDetails();
         render();
@@ -1296,8 +1501,16 @@
       els.graph.classList.remove("dragging");
     }
 
-    function zoom(factor) {
-      state.scale = Math.max(0.22, Math.min(3.8, state.scale * factor));
+    function zoom(factor, clientX, clientY) {
+      const bounds = els.graph.getBoundingClientRect();
+      const anchorX = Number.isFinite(clientX) ? clientX - bounds.left : bounds.width / 2;
+      const anchorY = Number.isFinite(clientY) ? clientY - bounds.top : bounds.height / 2;
+      const graphX = (anchorX - state.x) / state.scale;
+      const graphY = (anchorY - state.y) / state.scale;
+      const nextScale = Math.max(0.22, Math.min(3.8, state.scale * factor));
+      state.x = anchorX - graphX * nextScale;
+      state.y = anchorY - graphY * nextScale;
+      state.scale = nextScale;
       applyTransform();
     }
 
