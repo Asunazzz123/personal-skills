@@ -2,6 +2,28 @@
 
 The source-code explanation must include at least one zoomable HTML artifact. Use `assets/project-code-map-template.html` as the structural starting point and replace its sample data with inspected repository evidence.
 
+## Output Directory Contract
+
+Write all generated pages and supporting or intermediate artifacts beneath the target project root:
+
+```text
+<project>/.visualize_web/
+├── index.html                 # default entry page
+├── case-path.html             # optional focused views
+├── interfaces.html
+├── resources.html
+├── deep-dive-<module>.html
+├── assets/                    # optional generated CSS, JS, images, or fonts
+└── data/                      # optional graph data, ledgers, manifests, or analysis JSON
+```
+
+- Create `.visualize_web/` when it does not exist and update it in place when it does.
+- Keep all generated relative links inside `.visualize_web/` so the directory is portable as one unit.
+- Put standalone CSS/JavaScript and analysis intermediates in `assets/` or `data/`; a single-file build may inline them into `index.html`.
+- Do not copy generated output into the skill's own `assets/` directory; that directory contains reusable source templates.
+- Preserve unrelated existing files and never delete or replace the whole `.visualize_web/` directory.
+- Use another output location only when the user explicitly requests it.
+
 ## Layout Requirements
 
 Match the stable three-column reading layout:
@@ -25,11 +47,11 @@ Match the stable three-column reading layout:
 
 Small repositories can use one HTML file with multiple graph views. Large repositories should create:
 
-- `index.html`: overview, asset inventory, navigation.
-- `case-path.html`: concrete runtime overlay.
-- `interfaces.html`: interface surface and boundary map.
-- `resources.html`: lifecycle/resource view.
-- `deep-dive-<module>.html`: one page per complex module.
+- `.visualize_web/index.html`: overview, asset inventory, navigation.
+- `.visualize_web/case-path.html`: concrete runtime overlay.
+- `.visualize_web/interfaces.html`: interface surface and boundary map.
+- `.visualize_web/resources.html`: lifecycle/resource view.
+- `.visualize_web/deep-dive-<module>.html`: one page per complex module.
 
 ## Node Schema
 
@@ -122,6 +144,7 @@ The HTML should answer:
 
 Before finishing:
 
+- Confirm every generated page, visual asset, graph-data file, ledger, and manifest is contained under `<project>/.visualize_web/` and that `index.html` is the default entry.
 - Inspect the HTML and confirm it contains non-placeholder repository data.
 - Confirm language switching changes UI labels and localized node fields.
 - Confirm left controls, center graph, and right details are present.

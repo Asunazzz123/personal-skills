@@ -15,6 +15,14 @@ Before analyzing a repository, read `references/analysis-framework.md`.
 
 Before creating the visual artifact, read `references/html-output-spec.md` and use `assets/project-code-map-template.html` as the structural starting point. Replace its sample data with inspected repository evidence.
 
+## Output Location Contract
+
+- Resolve the target project root before generating artifacts.
+- Create or reuse `<project>/.visualize_web/` as the single output root.
+- Put every generated web page and supporting or intermediate artifact there, including HTML, CSS, JavaScript, JSON graph data, ledgers, manifests, and generated visual assets.
+- Use `<project>/.visualize_web/index.html` as the default entry page. Put focused views and optional `assets/` or `data/` subdirectories beneath the same root.
+- Do not write visualization artifacts elsewhere unless the user explicitly overrides the location. Preserve unrelated existing files inside `.visualize_web/`; never clear the directory wholesale.
+
 ## Workflow
 
 1. Start from one concrete case: CLI command, API request, test, example script, training step, inference request, compiler pass, DB query, scheduler tick, plugin hook, or operator invocation. If the user does not provide one, choose a representative case and state why.
@@ -28,8 +36,8 @@ Before creating the visual artifact, read `references/html-output-spec.md` and u
    - Backend/distributed profile: API, service, storage, queue, cache, consistency, retry.
    - Database/storage profile: query, plan, index, buffer, transaction, log, durability.
 7. Add second-level deep dives for complex state machines, schedulers, partitioning, algorithms, protocol contracts, formula-to-code gaps, lifecycle-sensitive resources, or highly coupled modules.
-8. Produce at least one direct visual HTML artifact with pan/zoom, stable three-column layout, left control sidebar, right node detail panel, light beige background, and Chinese/English display toggle.
-9. Finish with a concise reading guide: selected case, generated HTML path, key assets, interfaces, resource abstractions, boundary handoffs, runtime risks, and unresolved uncertainties.
+8. Produce at least one direct visual HTML artifact under `<project>/.visualize_web/` with pan/zoom, stable three-column layout, left control sidebar, right node detail panel, light beige background, and Chinese/English display toggle. Default to `index.html` for the entry page.
+9. Finish with a concise reading guide: selected case, `.visualize_web/index.html` path, key assets, interfaces, resource abstractions, boundary handoffs, runtime risks, and unresolved uncertainties.
 
 ## Views To Produce
 
