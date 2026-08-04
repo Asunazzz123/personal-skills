@@ -50,6 +50,8 @@ Before creating the visual artifact, read `references/html-output-spec.md` and u
 - Use file/function references with line numbers after inspecting code.
 - Use visual distinctions for owned assets, interfaces, external boundaries, runtime states, resources, risks, and selected case path.
 - Support pan, zoom, reset, fit, search, and filters. Keep text readable and prevent node text from resizing the layout.
+- Keep nodes fixed-size. Show a one-line title and at most two pixel-measured summary lines with an ellipsis and SVG clipping; show the complete summary and ledger fields only in the right detail panel.
+- Do not keep edge labels visible on dense canvases. Give edges a wider transparent hit target, highlight the hovered edge, show its source, target, and relation in the right panel, and allow click-to-pin without covering the graph.
 - Prefer multiple focused views over one unreadable mega-graph.
 - Preserve uncertainty. Mark inferred edges and low-confidence nodes.
 
@@ -59,5 +61,7 @@ Before creating the visual artifact, read `references/html-output-spec.md` and u
 - Treating public APIs, config contracts, and file formats as ordinary functions instead of interfaces.
 - Hiding external boundaries, which conceals what this repository actually owns.
 - Mixing static ownership, runtime flow, and risk annotations into one untyped arrow.
+- Letting long node text resize or escape its box instead of using fixed geometry and right-panel disclosure.
+- Leaving all relation labels on the canvas, where converging edges make them overlap nodes, paths, and one another.
 - Explaining external libraries instead of the local adapter/contract.
 - Producing a static image only; the required deliverable includes zoomable HTML.

@@ -289,7 +289,7 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       vector-effect: non-scaling-stroke;
-      transition: opacity 140ms ease, stroke-width 140ms ease, filter 140ms ease;
+      transition: opacity 140ms ease, stroke 140ms ease, stroke-width 140ms ease, filter 140ms ease;
     }
 
     .edge.inferred { stroke-dasharray: 7 6; marker-end: url(#arrow-default); }
@@ -300,7 +300,8 @@
     .edge.resource-lifecycle { stroke: var(--violet); marker-end: url(#arrow-resource); }
 
     .edge-group:hover .edge,
-    .edge-group.connected .edge {
+    .edge-group.connected .edge,
+    .edge-group.pinned .edge {
       stroke-width: 3.5;
       filter: drop-shadow(0 2px 3px rgba(43, 51, 66, 0.22));
     }
@@ -310,36 +311,14 @@
     .edge-hit {
       fill: none;
       stroke: transparent;
-      stroke-width: 14;
+      stroke-width: 18;
       pointer-events: stroke;
       cursor: help;
     }
 
-    .edge-label {
-      fill: #687386;
-      font-size: 11px;
-      paint-order: stroke;
-      stroke: #fbfaf6;
-      stroke-width: 4px;
-      letter-spacing: 0;
-      font-weight: 750;
-      pointer-events: none;
-      text-anchor: middle;
-      dominant-baseline: central;
-    }
-
-    .edge-label-bg {
-      fill: rgba(251, 250, 246, 0.92);
-      stroke: rgba(216, 222, 208, 0.88);
-      stroke-width: 1;
-      rx: 5;
-      ry: 5;
-      pointer-events: none;
-    }
-
     .node rect {
-      width: 170px;
-      height: 62px;
+      width: 190px;
+      height: 84px;
       rx: 10;
       ry: 10;
       fill: var(--blue-soft);
@@ -422,6 +401,39 @@
       font-size: 14px;
       line-height: 1.55;
       font-weight: 600;
+    }
+
+    .relation-panel {
+      margin: 14px 0 0;
+      padding: 11px 12px;
+      border: 1px solid #263638;
+      border-radius: 8px;
+      background: #1f2d2f;
+      color: #fff;
+    }
+
+    .relation-panel[hidden] { display: none; }
+
+    .relation-heading {
+      color: #bdc9c7;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .relation-route {
+      margin-top: 5px;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .relation-label {
+      margin-top: 3px;
+      color: #d8dedc;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .kv {
@@ -644,6 +656,11 @@
       <aside class="right-panel">
         <h2 class="detail-title" id="detailTitle"></h2>
         <div class="detail-body" id="detailBody"></div>
+        <div class="relation-panel" id="relationPanel" role="status" hidden>
+          <div class="relation-heading" id="relationHeading"></div>
+          <div class="relation-route" id="relationRoute"></div>
+          <div class="relation-label" id="relationLabel"></div>
+        </div>
         <hr class="section-line">
         <div id="deepDivePanel"></div>
       </aside>
@@ -695,7 +712,9 @@
           zoomOut: "缩小",
           artifactsGroup: "产物",
           selectedFallback: "选择一个节点",
-          selectedHelp: "点击图中的资产或接口节点，查看类型、来源、输入输出、契约和风险。",
+          selectedHelp: "点击节点查看完整信息；悬停连线在右栏查看关系，点击可固定。",
+          hoveredRelation: "当前悬停关系",
+          pinnedRelation: "已固定关系",
           type: "类型",
           assetType: "资产类型",
           interfaceType: "接口类型",
@@ -748,7 +767,9 @@
           zoomOut: "Zoom out",
           artifactsGroup: "Artifacts",
           selectedFallback: "Select a node",
-          selectedHelp: "Click an asset or interface node to inspect type, source, inputs, outputs, contracts, and risks.",
+          selectedHelp: "Click a node for full details. Hover an edge to inspect its relation here; click to pin it.",
+          hoveredRelation: "Hovered relation",
+          pinnedRelation: "Pinned relation",
           type: "Type",
           assetType: "Asset type",
           interfaceType: "Interface type",
@@ -798,6 +819,7 @@
               x: 80,
               y: 150,
               source_refs: ["src/api.py:42"],
+              summaryShort: { zh: "校验并分发入口请求。", en: "Validates and dispatches the request." },
               summary: { zh: "用户或测试用例调用的入口接口。", en: "Entry interface called by a user or test case." },
               inputs: ["case config"],
               outputs: ["execution result"],
@@ -989,6 +1011,10 @@
       ]
     };
 
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const NODE_WIDTH = 190;
+    const NODE_HEIGHT = 84;
+
     const state = {
       lang: MAP_DATA.defaultLang || "zh",
       viewId: MAP_DATA.views[0].id,
@@ -996,6 +1022,8 @@
       x: 40,
       y: 40,
       selectedId: null,
+      activeRelation: null,
+      pinnedEdgeKey: null,
       dragging: false,
       dragStart: null,
       dragMoved: false,
@@ -1034,6 +1062,10 @@
       viewport: document.getElementById("viewport"),
       detailTitle: document.getElementById("detailTitle"),
       detailBody: document.getElementById("detailBody"),
+      relationPanel: document.getElementById("relationPanel"),
+      relationHeading: document.getElementById("relationHeading"),
+      relationRoute: document.getElementById("relationRoute"),
+      relationLabel: document.getElementById("relationLabel"),
       deepDivePanel: document.getElementById("deepDivePanel")
     };
 
@@ -1091,6 +1123,7 @@
         option.textContent = text(view.label);
       });
       if (!state.selectedId) showEmptyDetails();
+      renderRelationPanel();
     }
 
     function refreshFilterOptions() {
@@ -1155,6 +1188,13 @@
       const nodes = filteredNodes(view);
       const nodeIds = new Set(nodes.map((node) => node.id));
       const edges = view.edges.filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to));
+      const visibleEdgeKeys = new Set(edges.map(edgeKey));
+      if (state.pinnedEdgeKey && !visibleEdgeKeys.has(state.pinnedEdgeKey)) {
+        state.pinnedEdgeKey = null;
+      }
+      state.activeRelation = state.pinnedEdgeKey
+        ? edges.find((edge) => edgeKey(edge) === state.pinnedEdgeKey) || null
+        : null;
       renderEdges(view, edges);
       renderNodes(nodes);
       if (state.selectedId && !nodeIds.has(state.selectedId)) {
@@ -1164,10 +1204,10 @@
         const selected = nodes.find((node) => node.id === state.selectedId);
         if (selected) showDetails(selected);
       }
+      renderRelationPanel();
       applyTransform();
     }
 
-    const NODE_WIDTH = 170;
     const MIN_COLUMN_GAP = 96;
     const EDGE_LABEL_PADDING = 10;
     const EDGE_LABEL_CLEARANCE = 24;
@@ -1233,6 +1273,7 @@
           ...(node.planes || []),
           ...(node.resourceTypes || []),
           ...(node.source_refs || []),
+          text(node.summaryShort),
           text(node.summary)
         ].join(" ").toLowerCase();
         if (query && !haystack.includes(query)) return false;
@@ -1267,52 +1308,58 @@
         const from = view.nodes.find((node) => node.id === edge.from);
         const to = view.nodes.find((node) => node.id === edge.to);
         if (!from || !to) return;
+        const key = edgeKey(edge);
         const route = edgeRoute(from, to);
-        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        group.setAttribute("class", `edge-group ${state.selectedId && (edge.from === state.selectedId || edge.to === state.selectedId) ? "connected" : state.selectedId ? "dimmed" : ""}`);
+        const selectionClass = state.selectedId
+          ? (edge.from === state.selectedId || edge.to === state.selectedId ? "connected" : "dimmed")
+          : "";
+        const group = document.createElementNS(SVG_NS, "g");
+        group.setAttribute("class", `edge-group ${selectionClass} ${state.pinnedEdgeKey === key ? "pinned" : ""}`);
         group.dataset.from = edge.from;
         group.dataset.to = edge.to;
 
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const title = document.createElementNS(SVG_NS, "title");
+        title.textContent = `${text(from.label)} → ${text(to.label)} · ${text(edge.label) || edge.kind || ""}`;
+        group.appendChild(title);
+
+        const path = document.createElementNS(SVG_NS, "path");
         path.setAttribute("class", `edge ${edge.kind || ""} ${edge.inferred ? "inferred" : ""}`);
         path.setAttribute("d", route.d);
         group.appendChild(path);
 
-        const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const hit = document.createElementNS(SVG_NS, "path");
         hit.setAttribute("class", "edge-hit");
         hit.setAttribute("d", route.d);
-        const edgeLabel = text(edge.label) || edge.kind || "";
-        const edgeDescription = `${text(from.label)} → ${text(to.label)}: ${edgeLabel}`;
-        hit.setAttribute("aria-label", edgeDescription);
-        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        title.textContent = edgeDescription;
-        hit.appendChild(title);
+        hit.setAttribute("aria-label", title.textContent);
         group.appendChild(hit);
 
-        els.viewport.appendChild(group);
+        group.addEventListener("pointerenter", () => {
+          state.activeRelation = edge;
+          renderRelationPanel();
+        });
+        group.addEventListener("pointerleave", () => {
+          state.activeRelation = state.pinnedEdgeKey
+            ? activeView().edges.find((candidate) => edgeKey(candidate) === state.pinnedEdgeKey) || null
+            : null;
+          renderRelationPanel();
+        });
+        group.addEventListener("pointerdown", (event) => event.stopPropagation());
+        group.addEventListener("click", (event) => {
+          event.stopPropagation();
+          state.pinnedEdgeKey = state.pinnedEdgeKey === key ? null : key;
+          state.activeRelation = state.pinnedEdgeKey ? edge : null;
+          els.viewport.querySelectorAll(".edge-group").forEach((item) => item.classList.remove("pinned"));
+          if (state.pinnedEdgeKey) group.classList.add("pinned");
+          renderRelationPanel();
+        });
 
-        if (edgeLabel) {
-          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          label.setAttribute("class", "edge-label");
-          label.setAttribute("x", route.labelX);
-          label.setAttribute("y", route.labelY);
-          label.textContent = edgeLabel;
-          group.appendChild(label);
-          const labelBox = label.getBBox();
-          const labelBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          labelBg.setAttribute("class", "edge-label-bg");
-          labelBg.setAttribute("x", labelBox.x - 5);
-          labelBg.setAttribute("y", labelBox.y - 3);
-          labelBg.setAttribute("width", labelBox.width + 10);
-          labelBg.setAttribute("height", labelBox.height + 6);
-          group.insertBefore(labelBg, label);
-        }
+        els.viewport.appendChild(group);
       });
     }
 
     function edgeRoute(from, to) {
-      const width = 170;
-      const height = 62;
+      const width = NODE_WIDTH;
+      const height = NODE_HEIGHT;
       const a = { x: from.x + width / 2, y: from.y + height / 2 };
       const b = { x: to.x + width / 2, y: to.y + height / 2 };
       const dx = b.x - a.x;
@@ -1348,7 +1395,7 @@
 
     function renderNodes(nodes) {
       nodes.forEach((node) => {
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const g = document.createElementNS(SVG_NS, "g");
         g.setAttribute("class", `node ${node.kind || "asset"} ${state.selectedId === node.id ? "selected" : ""}`);
         g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
         g.addEventListener("click", (event) => {
@@ -1362,22 +1409,81 @@
           render();
         });
 
-        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        const nativeTitle = document.createElementNS(SVG_NS, "title");
+        nativeTitle.textContent = `${text(node.label)} — ${text(node.summary)}`;
+        g.appendChild(nativeTitle);
+
+        const clipId = `node-content-${node.id}`;
+        const clipPath = document.createElementNS(SVG_NS, "clipPath");
+        clipPath.setAttribute("id", clipId);
+        const clipRect = document.createElementNS(SVG_NS, "rect");
+        clipRect.setAttribute("x", "8");
+        clipRect.setAttribute("y", "7");
+        clipRect.setAttribute("width", String(NODE_WIDTH - 16));
+        clipRect.setAttribute("height", String(NODE_HEIGHT - 14));
+        clipPath.appendChild(clipRect);
+        g.appendChild(clipPath);
+
+        const rect = document.createElementNS(SVG_NS, "rect");
         g.appendChild(rect);
-        addText(g, "title", 10, 19, truncate(text(node.label), 22));
-        addText(g, "sub", 10, 38, truncate(node.symbol || node.assetType || node.interfaceType || node.kind, 24));
-        addText(g, "sub", 10, 54, truncate(`${node.phase || ""} / ${node.confidence || ""}`, 24));
+        const maxTextWidth = NODE_WIDTH - 20;
+        addText(g, "title", 10, 19, fitText(text(node.label), maxTextWidth, "800 12px Inter, system-ui, sans-serif"), clipId);
+        addText(g, "sub", 10, 37, fitText(node.symbol || node.assetType || node.interfaceType || node.kind, maxTextWidth, "650 10px Inter, system-ui, sans-serif"), clipId);
+        addTextLines(
+          g,
+          "sub",
+          10,
+          55,
+          wrapText(text(node.summaryShort || node.summary), maxTextWidth, 2, "650 10px Inter, system-ui, sans-serif"),
+          clipId
+        );
         els.viewport.appendChild(g);
       });
     }
 
-    function addText(group, className, x, y, value) {
-      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    function addText(group, className, x, y, value, clipId) {
+      const t = document.createElementNS(SVG_NS, "text");
       t.setAttribute("class", className);
       t.setAttribute("x", x);
       t.setAttribute("y", y);
+      if (clipId) t.setAttribute("clip-path", `url(#${clipId})`);
       t.textContent = value;
       group.appendChild(t);
+    }
+
+    function addTextLines(group, className, x, y, lines, clipId) {
+      const t = document.createElementNS(SVG_NS, "text");
+      t.setAttribute("class", className);
+      t.setAttribute("x", x);
+      t.setAttribute("y", y);
+      if (clipId) t.setAttribute("clip-path", `url(#${clipId})`);
+      lines.forEach((line, index) => {
+        const span = document.createElementNS(SVG_NS, "tspan");
+        span.setAttribute("x", x);
+        span.setAttribute("dy", index === 0 ? "0" : "14");
+        span.textContent = line;
+        t.appendChild(span);
+      });
+      group.appendChild(t);
+    }
+
+    function edgeKey(edge) {
+      return `${edge.from}::${edge.to}::${edge.kind || ""}`;
+    }
+
+    function renderRelationPanel() {
+      const edge = state.activeRelation;
+      if (!edge) {
+        els.relationPanel.hidden = true;
+        return;
+      }
+      const view = activeView();
+      const from = view.nodes.find((node) => node.id === edge.from);
+      const to = view.nodes.find((node) => node.id === edge.to);
+      els.relationHeading.textContent = tr(state.pinnedEdgeKey === edgeKey(edge) ? "pinnedRelation" : "hoveredRelation");
+      els.relationRoute.textContent = `${from ? text(from.label) : edge.from} → ${to ? text(to.label) : edge.to}`;
+      els.relationLabel.textContent = text(edge.label) || edge.kind || "";
+      els.relationPanel.hidden = false;
     }
 
     function showEmptyDetails() {
@@ -1532,9 +1638,40 @@
       return Array.from(new Set(values.filter(Boolean))).sort();
     }
 
-    function truncate(value, max) {
-      const s = String(value || "");
-      return s.length > max ? `${s.slice(0, max - 1)}...` : s;
+    const textMeasure = document.createElement("canvas").getContext("2d");
+
+    function textWidth(value, font) {
+      textMeasure.font = font;
+      return textMeasure.measureText(value).width;
+    }
+
+    function fitText(value, maxWidth, font) {
+      const chars = Array.from(String(value || ""));
+      if (textWidth(chars.join(""), font) <= maxWidth) return chars.join("");
+      while (chars.length && textWidth(`${chars.join("")}…`, font) > maxWidth) chars.pop();
+      return `${chars.join("").trimEnd()}…`;
+    }
+
+    function wrapText(value, maxWidth, maxLines, font) {
+      const chars = Array.from(String(value || ""));
+      const lines = [];
+      let line = "";
+      let index = 0;
+      while (index < chars.length && lines.length < maxLines) {
+        const candidate = line + chars[index];
+        if (!line || textWidth(candidate, font) <= maxWidth) {
+          line = candidate;
+          index += 1;
+        } else {
+          lines.push(line.trimEnd());
+          line = "";
+        }
+      }
+      if (line && lines.length < maxLines) lines.push(line.trimEnd());
+      if (index < chars.length && lines.length) {
+        lines[lines.length - 1] = fitText(`${lines[lines.length - 1]}…`, maxWidth, font);
+      }
+      return lines;
     }
 
     function escapeHtml(value) {
