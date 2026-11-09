@@ -1,0 +1,4 @@
+interface:
+  display_name: "谱图转 GP5"
+  short_description: "识读吉他谱图，校验节奏与弦品，生成可追溯的记谱数据和 GP5 文件"
+  default_prompt: "使用 $score-to-gp5 读取我提供的吉他谱图或 PDF，提取记谱 schema 并导出 GP5。"
