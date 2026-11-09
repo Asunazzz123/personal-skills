@@ -1,0 +1,7 @@
+{
+  "name": "score-to-gp5",
+  "version": "0.1.0",
+  "description": "Guitar sheet images to validated notation, playback JSON and GP5.",
+  "skills": "./skills/",
+  "author": {"name": "Asuna"}
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sample-based guitar score 0.1",
+  "description": "Fixed-tempo, six-string guitar score. Runtime validation also checks references, configured fret limits, target MIDI pitches, inherited voicings, pattern positions, frame collisions, and output duration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "instrument", "timebase", "events"],
+  "properties": {
+    "$schema": {"$ref": "#/$defs/name"},
+    "schema_version": {"const": "0.1"},
+    "instrument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sample_bank"],
+      "properties": {
+        "sample_bank": {"$ref": "#/$defs/name"},
+        "tuning_midi_6_to_1": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"type": "integer", "minimum": 0, "maximum": 127},
+          "default": [40, 45, 50, 55, 59, 64]
+        },
+        "max_fret": {"type": "integer", "minimum": 0, "maximum": 36, "default": 24}
+      }
+    },
+    "timebase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bpm"],
+      "properties": {
+        "beat_unit": {"const": "quarter_note", "default": "quarter_note"},
+        "bpm": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000}
+      }
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sample_rate": {"type": "integer", "minimum": 1, "maximum": 192000, "default": 48000},
+        "retrigger_release_ms": {"$ref": "#/$defs/milliseconds", "default": 15},
+        "master_gain_db": {"type": "number", "minimum": -120, "maximum": 24, "default": -6},
+        "peak_limit": {"type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.98},
+        "max_duration_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600, "default": 600}
+      }
+    },
+    "voicings": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/name"},
+      "additionalProperties": {
+        "description": "Frets in string 6-to-1 order. Null skips the string without muting it.",
+        "type": "array",
+        "minItems": 6,
+        "maxItems": 6,
+        "items": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/fret"}]},
+        "contains": {"$ref": "#/$defs/fret"}
+      }
+    },
+    "patterns": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/name"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["length_beats", "events"],
+        "properties": {
+          "length_beats": {"type": "number", "exclusiveMinimum": 0},
+          "events": {
+            "description": "Each relative at_beat must be below length_beats. Strum offsets and sound tails may extend beyond it. Nested pattern calls are unsupported.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100000,
+            "items": {"oneOf": [{"$ref": "#/$defs/pluck"}, {"$ref": "#/$defs/patternStrum"}, {"$ref": "#/$defs/mute"}]}
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {"oneOf": [{"$ref": "#/$defs/pluck"}, {"$ref": "#/$defs/strum"}, {"$ref": "#/$defs/mute"}, {"$ref": "#/$defs/patternCall"}]}
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "pattern": "\\S"},
+    "beat": {"type": "number", "minimum": 0},
+    "string": {"type": "integer", "minimum": 1, "maximum": 6},
+    "fret": {"type": "integer", "minimum": 0, "maximum": 36},
+    "velocity": {"type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.8},
+    "milliseconds": {"type": "number", "minimum": 0, "maximum": 10000},
+    "pluck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_beat", "type", "string", "fret"],
+      "properties": {
+        "at_beat": {"$ref": "#/$defs/beat"},
+        "type": {"const": "pluck"},
+        "string": {"$ref": "#/$defs/string"},
+        "fret": {"$ref": "#/$defs/fret"},
+        "velocity": {"$ref": "#/$defs/velocity"}
+      }
+    },
+    "patternStrum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_beat", "type"],
+      "properties": {
+        "at_beat": {"$ref": "#/$defs/beat"},
+        "type": {"const": "strum"},
+        "voicing": {"$ref": "#/$defs/name"},
+        "direction": {"enum": ["down", "up"], "default": "down"},
+        "spread_ms": {"$ref": "#/$defs/milliseconds", "default": 30},
+        "velocity": {"$ref": "#/$defs/velocity"}
+      }
+    },
+    "strum": {
+      "allOf": [{"$ref": "#/$defs/patternStrum"}],
+      "required": ["voicing"]
+    },
+    "mute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_beat", "type", "strings"],
+      "properties": {
+        "at_beat": {"$ref": "#/$defs/beat"},
+        "type": {"const": "mute"},
+        "strings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/string"}},
+        "release_ms": {"$ref": "#/$defs/milliseconds", "default": 30}
+      }
+    },
+    "patternCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_beat", "type", "pattern"],
+      "properties": {
+        "at_beat": {"$ref": "#/$defs/beat"},
+        "type": {"const": "pattern"},
+        "pattern": {"$ref": "#/$defs/name"},
+        "voicing": {"$ref": "#/$defs/name", "description": "Fallback only: a pattern strum's explicit voicing takes precedence."}
+      }
+    }
+  }
+}

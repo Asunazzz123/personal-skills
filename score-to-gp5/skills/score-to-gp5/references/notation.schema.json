@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Guitar notation 1.0",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "metadata", "sources", "measures", "issues"],
+  "properties": {
+    "schema_version": {"const": "guitar-notation/1.0"},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["title", "bpm", "tempo_status", "capo_fret", "tuning_midi_6_to_1", "meter", "let_ring"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1}, "artist": {"type": "string"},
+        "bpm": {"type": "integer", "minimum": 1, "maximum": 400},
+        "tempo_status": {"enum": ["printed", "user", "estimated"]},
+        "capo_fret": {"type": "integer", "minimum": 0, "maximum": 24},
+        "tuning_midi_6_to_1": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"type": "integer", "minimum": 0, "maximum": 127}},
+        "meter": {"$ref": "#/$defs/meter"}, "let_ring": {"type": "boolean"}
+      }
+    },
+    "sources": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false, "required": ["id", "path", "sha256"],
+      "properties": {"id": {"type": "string", "minLength": 1}, "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "page": {"type": "integer", "minimum": 1}}
+    }},
+    "measures": {"type": "array", "minItems": 1, "maxItems": 2000, "items": {
+      "type": "object", "additionalProperties": false, "required": ["number", "events"],
+      "properties": {"number": {"type": "integer", "minimum": 1}, "meter": {"$ref": "#/$defs/meter"},
+        "length_beats": {"$ref": "#/$defs/rational"}, "source_id": {"type": "string"},
+        "bbox": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number", "minimum": 0}},
+        "events": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/event"}}
+      }
+    }},
+    "issues": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+      "required": ["status", "message"], "properties": {"status": {"enum": ["unresolved", "assumption"]},
+        "message": {"type": "string", "minLength": 1}, "measure": {"type": "integer", "minimum": 1}}}}
+  },
+  "$defs": {
+    "rational": {"type": "string", "pattern": "^[0-9]+(/[1-9][0-9]*)?$"},
+    "meter": {"type": "array", "minItems": 2, "maxItems": 2,
+      "prefixItems": [{"type": "integer", "minimum": 1, "maximum": 32}, {"enum": [1,2,4,8,16,32,64]}], "items": false},
+    "note": {"type": "object", "additionalProperties": false, "required": ["string", "fret"],
+      "properties": {"string": {"type": "integer", "minimum": 1, "maximum": 6},
+        "fret": {"type": "integer", "minimum": 0, "maximum": 36}, "tie": {"type": "boolean"},
+        "velocity": {"type": "integer", "minimum": 1, "maximum": 127},
+        "technique_from_previous": {"enum": ["hammer_on", "pull_off", "shift_slide", "legato_slide"]}}},
+    "event": {"type": "object", "additionalProperties": false, "required": ["beat", "duration", "notes"],
+      "properties": {"beat": {"$ref": "#/$defs/rational"}, "duration": {"$ref": "#/$defs/rational"},
+        "notes": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/note"}},
+        "rest": {"type": "boolean"}, "arpeggio": {"enum": ["low_to_high", "high_to_low"]},
+        "arpeggio_ms": {"type": "number", "minimum": 0, "maximum": 1000}}
+    }
+  }
+}
