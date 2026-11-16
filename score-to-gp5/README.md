@@ -1,4 +1,6 @@
-# 谱图转 GP5 · score-to-gp5 0.1.0
+# 谱图转 GP5 · score-to-gp5 0.2.0
+
+0.2.0 新增 `guitar-notation/1.1`：移夹、自然/人工/拍弦泛音、X 闷音、掌根闷音、重音、拍弦/点弦效果，以及独立打击轨。参阅 [技法字段与边界](skills/score-to-gp5/references/techniques.md)。1.0 的原有流程保持兼容；以下播放 JSON 说明仅适用于 1.0。1.1 输出 `score.performance.json`，尚无对应 WAV 合成器。
 
 可独立分发的本地 Codex 插件。**宿主 Codex 负责看谱图，脚本负责整理、验证和导出**；不包含自动识谱模型，不调用收费识图 API，不要求 OpenAI API key。
 
@@ -43,12 +45,12 @@ conda run -n agent python skills/score-to-gp5/scripts/pipeline.py import-legacy 
 ## 数据和边界
 
 - 记谱 schema 保留时值、休止、三连音、逐弦延音、技法、来源和不确定事项；播放 schema 是已有 wav_model 0.1 的严格兼容输出。
-- 单轨六弦、固定 BPM；支持局部拍号、明确长度的弱起。反复/跳房必须在识谱阶段按顺序展开。
+- 单把六弦吉他、固定 BPM；支持局部拍号、明确长度的弱起。1.1 可按 capo 拆成同步吉他轨并加打击轨。反复/跳房必须在识谱阶段按顺序展开。
 - GP5 分开保存基础调弦和 capo；播放 schema 将 capo 加到调弦上一次。
 - 击弦、勾弦、换把/连奏滑音写到 GP5 的源音上。播放 JSON 用目标音拨弦近似。
 - GP5 动态力度量化为 15、31、47、63、79、95、111、127；原始力度保留在播放 JSON，差异写入报告。
 - GP5 琶音使用 stroke=32，与播放 JSON 默认 30 ms 并非完全相同。
-- 泛音、推弦、打板、多声部、多轨、变速需额外扩展，不能把这些符号默默忽略。
+- 1.1 支持有限泛音节点及显式打击近似；1.2 已支持推弦等电吉他技法；任意多声部/多乐器、变速仍需额外扩展，不能把这些符号默默忽略。
 - 中文标题保留在 JSON/README；默认 GP5 内部文本使用 ASCII，避免旧格式乱码。`--encoding gbk` 可显式选择中文编码，仍需目标软件验证。
 - 不输出 WAV，不捆绑原歌曲、采样库或已有谱图。
 
@@ -70,3 +72,5 @@ conda run -n agent python skills/score-to-gp5/scripts/pipeline.py export example
 本地 marketplace 根目录含 `.agents/plugins/marketplace.json` 和 `plugins/score-to-gp5/`。可以按宿主支持的本地插件流程安装；CLI 注册入口为 `codex plugin marketplace add /absolute/path/to/marketplace-root`，之后在应用插件目录安装并在新聊天验证。生成包不会替用户执行全局注册或宣称已经启用。
 
 格式依据：[OpenAI 插件打包文档](https://developers.openai.com/plugins/build/plugins)。
+
+当前源码增加 guitar-notation/1.2：推弦曲线、揉弦、断奏、单音装饰音、拨片方向和 MIDI 音色。既有 0.2.0 ZIP 未覆盖；本次使用仓库源码生成。
