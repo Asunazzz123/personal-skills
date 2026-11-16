@@ -60,6 +60,9 @@ def duration(value):
 
 
 def validate(data, input_path, verify_sources=True):
+    if data.get('schema_version') in ('guitar-notation/1.1','guitar-notation/1.2'):
+        import performance
+        return performance.validate(data, input_path, verify_sources)
     import jsonschema
     jsonschema.Draft202012Validator(read(REF / 'notation.schema.json')).validate(data)
     unresolved = [i for i in data['issues'] if i['status'] == 'unresolved']
@@ -217,6 +220,9 @@ def build(data, encoding='ascii'):
 def export(input_path, out, force=False, encoding='ascii'):
     import guitarpro
     input_path=Path(input_path).resolve();data=read(input_path)
+    if data.get('schema_version') in ('guitar-notation/1.1','guitar-notation/1.2'):
+        import performance
+        return performance.export(input_path,out,force,encoding)
     summary=validate(data,input_path)
     out=Path(out).resolve()
     names=['score.gp5','score.playback.json','verification.json','README.txt']

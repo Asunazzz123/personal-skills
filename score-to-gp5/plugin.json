@@ -1,10 +1,18 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "score-to-gp5",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read guitar TAB images or PDFs, extract validated notation, and export playback JSON and verified GP5 files.",
-  "author": {"name": "Asuna"},
-  "keywords": ["guitar", "tablature", "gp5", "sheet-music", "transcription"],
+  "author": {
+    "name": "Asuna"
+  },
+  "keywords": [
+    "guitar",
+    "tablature",
+    "gp5",
+    "sheet-music",
+    "transcription"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
@@ -13,8 +21,13 @@
         "longDescription": "由 Codex 识读图片或 PDF，使用严格记谱 schema 保留节奏、弦品、连音与来源，经确定性校验后导出播放 JSON 和 GP5。",
         "developerName": "Asuna",
         "category": "Education",
-        "capabilities": ["Read", "Write"],
-        "defaultPrompt": ["把我提供的吉他谱图按记谱 schema 提取，并生成经过回读校验的 GP5 文件。"]
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "把我提供的吉他谱图按记谱 schema 提取，并生成经过回读校验的 GP5 文件。"
+        ]
       }
     }
   }
